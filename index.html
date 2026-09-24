@@ -237,6 +237,7 @@
   .popup-sub{font-size:13px;color:var(--muted);margin-top:6px;}
   .popup-spinner{width:38px;height:38px;margin:0 auto 12px;border:4px solid var(--line);border-top-color:var(--blue-border);border-radius:50%;animation:popspin .8s linear infinite;}
   @keyframes popspin{to{transform:rotate(360deg);}}
+  .mini-spinner{width:11px;height:11px;border:2px solid var(--line);border-top-color:var(--blue-border);border-radius:50%;display:inline-block;vertical-align:-1.5px;margin-right:5px;animation:popspin .7s linear infinite;}
   .popup-close{margin-top:16px;}
   @media print{.popup-overlay{display:none !important;}}
   .cust-suggest{position:absolute;left:0;right:0;z-index:50;display:none;max-height:240px;overflow-y:auto;background:var(--paper);border:1px solid var(--blue-border);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.35);}
@@ -527,6 +528,8 @@ window._suggIdx = -1;
 function normName(v){ return String(v||'').replace(/\s+/g,' ').trim().toLowerCase(); }
 async function loadCustomers(){
   const st = document.getElementById('custDbStatus');
+  st.style.color = 'var(--muted)';
+  st.innerHTML = '<span class="mini-spinner"></span>กำลังโหลดฐานข้อมูลลูกค้า...';
   let reason = '';
   try{
     const res = await fetch(SCRIPT_URL + '?action=customers');

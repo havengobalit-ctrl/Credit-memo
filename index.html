@@ -383,7 +383,7 @@ The above amount is calculated based on the actual amount paid after discount.</
   <section class="section" style="border-left:5px solid var(--muted);">
     <div class="tag">ฐานข้อมูล (Google Sheet — ทุกคนเห็นชุดเดียวกัน)</div>
     <div class="toolbar" style="margin-top:0;margin-bottom:10px;">
-      <button class="btn" onclick="refreshList()">รีเฟรช</button>
+      <button class="btn" onclick="refreshList(true)">รีเฟรช</button>
     </div>
     <div style="overflow-x:auto;">
       <table id="dbTable">
@@ -445,7 +445,7 @@ function showTab(name){
   document.getElementById('dbView').style.display = isForm ? 'none' : '';
   document.getElementById('tabFormBtn').classList.toggle('active', isForm);
   document.getElementById('tabDbBtn').classList.toggle('active', !isForm);
-  if (!isForm) refreshList();
+  if (!isForm) refreshList(true);
 }
 
 if (SCRIPT_URL.indexOf('PASTE_YOUR') !== 0) { fetchListSilently().then(checkDupNow); }
@@ -607,14 +607,18 @@ function setEditingBadge(memoNo){
   else { el.style.display='none'; el.textContent=''; }
 }
 
-async function refreshList(){
+async function refreshList(withPopup){
   const el = document.getElementById('memoList');
+  if (withPopup) showPopup('loading', 'กำลังโหลดข้อมูล...', 'กรุณารอสักครู่');
   try{
     const res = await fetch(SCRIPT_URL);
     const list = await res.json();
+    if (!Array.isArray(list)) throw new Error((list && list.message) || 'invalid response');
     renderList(list);
+    if (withPopup) hidePopup();
   }catch(e){
-    el.innerHTML = '<div style="color:var(--muted);font-size:13px;">โหลดรายการไม่สำเร็จ</div>';
+    el.innerHTML = '<tr><td colspan="6" style="color:var(--muted);font-size:13px;">โหลดรายการไม่สำเร็จ</td></tr>';
+    if (withPopup) showPopup('error', 'โหลดข้อมูลไม่สำเร็จ', 'ตรวจสอบการเชื่อมต่ออินเทอร์เน็ต แล้วกดรีเฟรชอีกครั้ง');
   }
 }
 

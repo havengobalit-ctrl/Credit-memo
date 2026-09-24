@@ -89,6 +89,7 @@
   .sum-opt{display:flex;align-items:center;gap:8px;font-size:13.5px;cursor:pointer;}
   .sum-opt input[type="checkbox"]{width:16px;height:16px;flex:none;accent-color:var(--green-border);}
   .sum-label{display:flex;flex-direction:column;line-height:1.35;}
+  textarea.sum-desc{width:100%;flex:1;resize:none;overflow:hidden;min-height:44px;line-height:1.35;font-size:13.5px;}
   .sum-label .en{font-size:12px;color:var(--muted);}
 
   .tabs{max-width:820px;margin:0 auto 12px;display:flex;gap:8px;}
@@ -281,7 +282,9 @@
       </div>
       <div class="field">
         <label>ลูกค้า (Customer)</label>
-        <input id="custName" value="Xintai Manufacturing Co.,Ltd.">
+        <input id="custName" value="Xintai Manufacturing Co.,Ltd." list="customerList" autocomplete="off" oninput="onCustNameInput()">
+        <datalist id="customerList"></datalist>
+        <div id="custHint" style="display:none;margin-top:4px;font-size:12.5px;color:var(--green-border);"></div>
       </div>
       <div class="field">
         <label>Tax ID ลูกค้า</label>
@@ -329,33 +332,12 @@
     <div class="tag">ส่วนสรุป / บันทึก — พิมพ์รายละเอียดได้อิสระ</div>
     <table id="summaryTable">
       <thead>
-        <tr><th style="width:60%;">DESCRIPTION</th><th style="width:20%;">UNIT PRICE</th><th style="width:20%;">AMOUNT</th></tr>
+        <tr><th style="width:56%;">DESCRIPTION</th><th style="width:20%;">UNIT PRICE</th><th style="width:20%;">AMOUNT</th><th style="width:4%;"></th></tr>
       </thead>
-      <tbody id="summaryBody">
-        <tr>
-          <td><label class="sum-opt"><input type="checkbox" class="sum-check" checked><span class="sum-label" data-desc="ยอดเงินเครดิตคงเหลือสุทธิ&#10;NET CREDIT BALANCE"><span class="th">ยอดเงินเครดิตคงเหลือสุทธิ</span><span class="en">NET CREDIT BALANCE</span></span></label></td>
-          <td class="num"><input type="number" class="unitprice" step="0.01" placeholder="0.00" oninput="syncAmount(this)"></td>
-          <td class="num"><input type="number" class="amount" step="0.01" value="0.00"></td>
-        </tr>
-        <tr>
-          <td><label class="sum-opt"><input type="checkbox" class="sum-check" checked><span class="sum-label" data-desc="มูลค่ารวมรายการใหม่สุทธิ&#10;Net Total of New Items"><span class="th">มูลค่ารวมรายการใหม่สุทธิ</span><span class="en">Net Total of New Items</span></span></label></td>
-          <td class="num"><input type="number" class="unitprice" step="0.01" placeholder="0.00" oninput="syncAmount(this)"></td>
-          <td class="num"><input type="number" class="amount" step="0.01" value="0.00"></td>
-        </tr>
-        <tr>
-          <td><label class="sum-opt"><input type="checkbox" class="sum-check" checked><span class="sum-label" data-desc="ยกเครดิตคงเหลือไปยอดรอบหน้า&#10;Remaining Credit"><span class="th">ยกเครดิตคงเหลือไปยอดรอบหน้า</span><span class="en">Remaining Credit</span></span></label></td>
-          <td class="num"><input type="number" class="unitprice" step="0.01" placeholder="0.00" oninput="syncAmount(this)"></td>
-          <td class="num"><input type="number" class="amount" step="0.01" value="0.00"></td>
-        </tr>
-        <tr>
-          <td><label class="sum-opt"><input type="checkbox" class="sum-check" checked><span class="sum-label" data-desc="คืนเงินส่วนต่างจากยอดชำระที่คงเหลือ&#10;Refund of Remaining Payment Balance"><span class="th">คืนเงินส่วนต่างจากยอดชำระที่คงเหลือ</span><span class="en">Refund of Remaining Payment Balance</span></span></label></td>
-          <td class="num"><input type="number" class="unitprice" step="0.01" placeholder="0.00" oninput="syncAmount(this)"></td>
-          <td class="num"><input type="number" class="amount" step="0.01" value="0.00"></td>
-        </tr>
-      </tbody>
+      <tbody id="summaryBody"></tbody>
     </table>
     <div class="field" style="margin-top:6px;">
-      <label style="font-size:11.5px;">ติ๊กถูกเฉพาะข้อที่จะใช้ — ข้อที่ไม่ติ๊กจะไม่แสดงตอนพิมพ์/PDF</label>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;"><button class="btn" onclick="addSummaryRow()">+ เพิ่มแถว</button><label style="font-size:11.5px;">แก้ข้อความได้อิสระ / ลบแถวที่ไม่ใช้ได้ — ข้อความเริ่มต้นจะกลับมาทุกครั้งที่เริ่มรายการใหม่</label></div>
     </div>
 
     <div class="field" style="margin-top:14px;">
@@ -399,6 +381,31 @@ The above amount is calculated based on the actual amount paid after discount.</
 </div>
 
 <script>
+const DEFAULT_SUMMARY = [
+  'ยอดเงินเครดิตคงเหลือสุทธิ\nNET CREDIT BALANCE',
+  'มูลค่ารวมรายการใหม่สุทธิ\nNet Total of New Items',
+  'ยกเครดิตคงเหลือไปยอดรอบหน้า\nRemaining Credit',
+  'คืนเงินส่วนต่างจากยอดชำระที่คงเหลือ\nRefund of Remaining Payment Balance'
+];
+function addSummaryRow(desc, unitPrice, amount){
+  const tbody = document.getElementById('summaryBody');
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><textarea class="sum-desc" rows="2" placeholder="รายละเอียด" oninput="autoGrow(this)"></textarea></td>
+    <td class="num"><input type="number" class="unitprice" step="0.01" placeholder="0.00" oninput="syncAmount(this)"></td>
+    <td class="num"><input type="number" class="amount" step="0.01" placeholder="0.00"></td>
+    <td class="row-actions"><button class="btn remove" onclick="removeRow(this)">ลบ</button></td>`;
+  const ta = tr.querySelector('.sum-desc');
+  ta.value = desc || '';
+  tr.querySelector('.unitprice').value = unitPrice || '';
+  tr.querySelector('.amount').value = (amount === '' || amount == null) ? '' : amount;
+  tbody.appendChild(tr);
+  autoGrow(ta);
+}
+function resetSummaryRows(){
+  document.getElementById('summaryBody').innerHTML = '';
+  DEFAULT_SUMMARY.forEach(d => addSummaryRow(d, '', '0.00'));
+}
 function syncAmount(unitInput){
   const row = unitInput.closest('tr');
   const amt = row.querySelector('.amount');
@@ -425,7 +432,7 @@ function autoGrow(el){
 }
 function removeRow(btn){
   const tbody = btn.closest('tbody');
-  if (tbody.children.length > 1){ btn.closest('tr').remove(); if (tbody.id === 'itemsBody') updateTotal(); }
+  if (tbody.children.length > (tbody.id === 'summaryBody' ? 0 : 1)){ btn.closest('tr').remove(); if (tbody.id === 'itemsBody') updateTotal(); }
 }
 function updateTotal(){
   let sum = 0;
@@ -433,11 +440,12 @@ function updateTotal(){
   document.getElementById('itemsTotal').textContent = sum.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
 }
 updateTotal();
-document.querySelectorAll('textarea.desc').forEach(autoGrow);
+resetSummaryRows();
+document.querySelectorAll('textarea.desc, textarea.sum-desc').forEach(autoGrow);
 
 // ---- Shared backend (Google Apps Script Web App + Google Sheet) ----
 // วาง Web app URL จาก Apps Script ตรงนี้ (ดูวิธีทำใน apps_script_backend.gs)
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzyEIero4qBxfh4ydjmoYfOCrnMnFpePkG8X0oup0RZ4cd5QZ9yJT5BzAxyelnl7N8b-w/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyaEJf-1r3RLXR7ZKID17XLUn61lg-igLJ7OKdeVDVLjG6WeB-BGwnnP3nuylIWr9KBEQ/exec';
 
 function showTab(name){
   const isForm = name === 'form';
@@ -448,7 +456,7 @@ function showTab(name){
   if (!isForm) refreshList(true);
 }
 
-if (SCRIPT_URL.indexOf('PASTE_YOUR') !== 0) { fetchListSilently().then(checkDupNow); }
+if (SCRIPT_URL.indexOf('PASTE_YOUR') !== 0) { fetchListSilently().then(checkDupNow); loadCustomers(); }
 if (SCRIPT_URL.indexOf('PASTE_YOUR') === 0) {
   document.getElementById('saveStatus').textContent = 'ยังไม่ได้ตั้งค่า SCRIPT_URL ในไฟล์นี้';
 }
@@ -465,8 +473,7 @@ function collectData(){
   const summaryItems = [];
   document.querySelectorAll('#summaryBody tr').forEach(tr=>{
     summaryItems.push({
-      desc: tr.querySelector('.sum-label').dataset.desc,
-      checked: tr.querySelector('.sum-check').checked,
+      desc: tr.querySelector('.sum-desc').value,
       unitPrice: tr.querySelector('.unitprice').value,
       amount: tr.querySelector('.amount').value,
     });
@@ -509,6 +516,39 @@ function checkDupNow(){
     el.textContent = '⚠ เลขที่นี้ซ้ำกับรายการที่มีอยู่แล้ว ' + dups.length + ' รายการ';
   } else { el.style.display = 'none'; el.textContent = ''; }
 }
+// ---- ฐานข้อมูลลูกค้า (แท็บ "Data" ใน Google Sheet) : พิมพ์ชื่อแล้วเติม Tax ID / ที่อยู่ให้ ----
+window._customers = [];
+function normName(v){ return String(v||'').replace(/\s+/g,' ').trim().toLowerCase(); }
+async function loadCustomers(){
+  try{
+    const res = await fetch(SCRIPT_URL + '?action=customers');
+    const list = await res.json();
+    if (!Array.isArray(list)) return;
+    window._customers = list.filter(c => c && c.name);
+    const dl = document.getElementById('customerList');
+    dl.innerHTML = '';
+    window._customers.forEach(c => {
+      const o = document.createElement('option');
+      o.value = c.name;
+      dl.appendChild(o);
+    });
+  }catch(e){}
+}
+function onCustNameInput(){
+  const hint = document.getElementById('custHint');
+  const key = normName(document.getElementById('custName').value);
+  const c = key ? window._customers.find(x => normName(x.name) === key) : null;
+  if (c){
+    setVal('custTax', c.tax);
+    setVal('custAddr', c.address);
+    hint.style.display = '';
+    hint.textContent = '✓ เติมเลขผู้เสียภาษีและที่อยู่จากฐานข้อมูลลูกค้าแล้ว';
+  } else {
+    hint.style.display = 'none';
+    hint.textContent = '';
+  }
+}
+
 async function fetchListSilently(){
   try{
     const res = await fetch(SCRIPT_URL);
@@ -587,13 +627,10 @@ function newMemo(){
   window._currentSavedAt = null;
   setEditingBadge(null);
   document.querySelectorAll('#formView input, #formView textarea').forEach(el=>{
-    if (el.id === 'memoDate' || el.id === 'details' || el.classList.contains('sum-check')) return;
+    if (el.id === 'memoDate' || el.id === 'details' || el.classList.contains('sum-check') || el.classList.contains('sum-desc')) return;
     el.value = '';
   });
-  document.querySelectorAll('#summaryBody tr').forEach(tr=>{
-    tr.querySelector('.sum-check').checked = true;
-    tr.querySelector('.amount').value = '0.00';
-  });
+  resetSummaryRows();   // คืนแถวและข้อความเดิมทุกครั้งที่เริ่มรายการใหม่
   const tbody = document.getElementById('itemsBody');
   tbody.innerHTML = '<tr><td><textarea class="desc" rows="1" oninput="autoGrow(this)"></textarea></td><td class="num"><input type="number" class="unitprice" step="0.01" oninput="syncAmount(this)"></td><td class="num"><input type="number" class="amount" step="0.01"></td><td class="row-actions"><button class="btn remove" onclick="removeRow(this)">ลบ</button></td></tr>';
   updateTotal();
@@ -700,19 +737,16 @@ function applyDataToForm(data){
       <td class="row-actions"><button class="btn remove" onclick="removeRow(this)">ลบ</button></td>`;
     tbody.appendChild(tr);
   });
-  const sRows = document.querySelectorAll('#summaryBody tr');
-  (data.summaryItems || []).forEach((it, i)=>{
-    const row = sRows[i];
-    if (!row) return;
-    const chk = row.querySelector('.sum-check');
-    const up = row.querySelector('.unitprice');
-    const amt = row.querySelector('.amount');
-    if (chk) chk.checked = (it.checked !== false);
-    if (up) up.value = it.unitPrice || '';
-    if (amt) amt.value = (it.amount === '' || it.amount == null) ? '0.00' : it.amount;
-  });
+  // แถวสรุป: รายการเก่าที่เคยติ๊กออก (checked === false) จะไม่นำมาแสดง
+  if (Array.isArray(data.summaryItems)){
+    document.getElementById('summaryBody').innerHTML = '';
+    data.summaryItems.filter(it => it.checked !== false)
+      .forEach(it => addSummaryRow(it.desc, it.unitPrice, it.amount));
+  } else {
+    resetSummaryRows();
+  }
   updateTotal();
-  document.querySelectorAll('textarea.desc').forEach(autoGrow);
+  document.querySelectorAll('textarea.desc, textarea.sum-desc').forEach(autoGrow);
   window.scrollTo({top:0, behavior:'smooth'});
 }
 

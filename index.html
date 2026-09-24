@@ -250,8 +250,8 @@
 <div class="print-bar"><button class="btn ghost" onclick="printMemo()">พิมพ์ / บันทึกเป็น PDF</button></div>
 
 <div class="tabs">
-  <button class="tab-btn active" id="tabFormBtn" onclick="showTab('form')">กรอกฟอร์ม</button>
-  <button class="tab-btn" id="tabDbBtn" onclick="showTab('db')">ฐานข้อมูล</button>
+  <button class="tab-btn active" id="tabFormBtn" onclick="showTab('form')">Credit Memo</button>
+  <button class="tab-btn" id="tabDbBtn" onclick="showTab('db')">Database</button>
 </div>
 
 <div id="printSheet"></div>
@@ -334,7 +334,7 @@
 
   <!-- GREEN: SUMMARY -->
   <section class="section green">
-    <div class="tag">ส่วนสรุป / บันทึก — พิมพ์รายละเอียดได้อิสระ</div>
+    <div class="tag"></div>
     <table id="summaryTable">
       <thead>
         <tr><th style="width:56%;">DESCRIPTION</th><th style="width:20%;">UNIT PRICE</th><th style="width:20%;">AMOUNT</th><th style="width:4%;"></th></tr>
@@ -342,11 +342,11 @@
       <tbody id="summaryBody"></tbody>
     </table>
     <div class="field" style="margin-top:6px;">
-      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;"><button class="btn" onclick="addSummaryRow()">+ เพิ่มแถว</button><label style="font-size:11.5px;">แก้ข้อความได้อิสระ / ลบแถวที่ไม่ใช้ได้ — ข้อความเริ่มต้นจะกลับมาทุกครั้งที่เริ่มรายการใหม่</label></div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;"><button class="btn" onclick="addSummaryRow()">+ เพิ่มแถว</button><label style="font-size:11.5px;"></label></div>
     </div>
 
     <div class="field" style="margin-top:14px;">
-      <label>รายละเอียด (พิมพ์ทีละบรรทัด — จะขึ้นเลขข้อให้อัตโนมัติตอนพิมพ์)</label>
+      <label></label>
       <textarea id="details" rows="6" placeholder="">รายละเอียด
 1.ยอดเครดิตนี้จะเก็บเพื่อใช้หักลบกับค่าบริการในอนาคต
 This credit is held for future service dections.
@@ -368,7 +368,7 @@ The above amount is calculated based on the actual amount paid after discount.</
 
 <div class="sheet" id="dbView" style="display:none;">
   <section class="section" style="border-left:5px solid var(--muted);">
-    <div class="tag">ฐานข้อมูล (Google Sheet — ทุกคนเห็นชุดเดียวกัน)</div>
+    <div class="tag"></div>
     <div class="toolbar" style="margin-top:0;margin-bottom:10px;">
       <button class="btn" onclick="refreshList(true)">รีเฟรช</button>
     </div>

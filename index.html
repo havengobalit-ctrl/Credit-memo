@@ -65,6 +65,8 @@
     border-radius:6px;padding:6px 12px;font-size:13px;cursor:pointer;
   }
   .btn.remove{border-color:#C0554A;color:#C0554A;}
+  .dup-badge{display:inline-block;margin-left:6px;padding:1px 6px;border:1px solid #C0554A;border-radius:10px;color:#E5766B;font-size:11px;white-space:nowrap;}
+  tr.dup-row{background:rgba(192,85,74,.10);}
   .btn.primary{background:var(--blue-border);color:#fff;border:none;}
   .btn.ghost{border-color:var(--line);color:var(--muted);}
   .toolbar{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;}
@@ -260,7 +262,8 @@
       </div>
       <div class="field">
         <label>เลขที่เอกสาร (No.)</label>
-        <input id="memoNo" value="CM2609002">
+        <input id="memoNo" value="CM2609002" oninput="checkDupNow()">
+        <div id="dupWarn" style="display:none;margin-top:4px;font-size:12.5px;color:#E5766B;"></div>
       </div>
       <div class="field">
         <label>วันที่ (Date)</label>
@@ -435,6 +438,7 @@ function showTab(name){
   if (!isForm) refreshList();
 }
 
+if (SCRIPT_URL.indexOf('PASTE_YOUR') !== 0) { fetchListSilently().then(checkDupNow); }
 if (SCRIPT_URL.indexOf('PASTE_YOUR') === 0) {
   document.getElementById('saveStatus').textContent = 'ยังไม่ได้ตั้งค่า SCRIPT_URL ในไฟล์นี้';
 }
@@ -470,12 +474,59 @@ function collectData(){
 }
 function val(id){ return document.getElementById(id).value; }
 
+// ---- ตรวจเลขที่เอกสารซ้ำ / จัดรูปวันที่ ----
+function normNo(v){ return String(v||'').trim().toLowerCase(); }
+function normalizeDate(v){
+  if (!v) return '';
+  const str = String(v);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+  const d = new Date(str);
+  if (isNaN(d)) return str;
+  const p = n => String(n).padStart(2,'0');
+  return d.getFullYear() + '-' + p(d.getMonth()+1) + '-' + p(d.getDate());
+}
+function findDuplicates(memoNo, list){
+  const n = normNo(memoNo);
+  if (!n) return [];
+  return (list || []).filter(d => normNo(d.memoNo) === n && d.id !== window._currentId);
+}
+function checkDupNow(){
+  const el = document.getElementById('dupWarn');
+  if (!el) return;
+  const dups = findDuplicates(document.getElementById('memoNo').value, window._memoCache);
+  if (dups.length){
+    el.style.display = '';
+    el.textContent = '⚠ เลขที่นี้ซ้ำกับรายการที่มีอยู่แล้ว ' + dups.length + ' รายการ';
+  } else { el.style.display = 'none'; el.textContent = ''; }
+}
+async function fetchListSilently(){
+  try{
+    const res = await fetch(SCRIPT_URL);
+    const list = await res.json();
+    if (Array.isArray(list)) { window._memoCache = list; return list; }
+  }catch(e){}
+  return null;
+}
+
 async function saveMemo(){
   const statusEl = document.getElementById('saveStatus');
   statusEl.textContent = 'กำลังบันทึก...';
   try{
     const data = collectData();
     const isUpdate = !!window._currentId;
+    // เช็กเลขที่ซ้ำกับข้อมูลล่าสุดในระบบ (ดึงใหม่ก่อนบันทึก เผื่อมีคนอื่นเพิ่งบันทึก)
+    const fresh = await fetchListSilently();
+    const dups = findDuplicates(data.memoNo, fresh || window._memoCache);
+    if (dups.length){
+      const lines = dups.slice(0,3).map(d => '• ' + (d.memoNo||'-') + ' | ' + (d.custName||'-') + ' | ' + (normalizeDate(d.memoDate)||'-') + ' | ' + (d.itemsTotal||'0.00')).join('\n');
+      const ok = confirm('⚠ เลขที่เอกสาร "' + data.memoNo + '" ซ้ำกับรายการที่มีอยู่แล้ว ' + dups.length + ' รายการ:\n' + lines + '\n\nต้องการบันทึกต่อหรือไม่?\n(กด Cancel เพื่อกลับไปแก้เลขที่)');
+      if (!ok){
+        statusEl.textContent = 'ยกเลิกการบันทึก — เลขที่เอกสารซ้ำ';
+        document.getElementById('memoNo').focus();
+        checkDupNow();
+        return;
+      }
+    }
     data.id = isUpdate ? window._currentId : ('m' + Date.now());
     data.savedAt = isUpdate ? (window._currentSavedAt || Date.now()) : Date.now();
     await fetch(SCRIPT_URL, {
@@ -537,13 +588,17 @@ function renderList(list){
     el.innerHTML = '<tr><td colspan="6" style="color:var(--muted);font-size:13px;">ยังไม่มีรายการที่บันทึกไว้</td></tr>';
     return;
   }
+  const counts = {};
+  list.forEach(d=>{ const k = normNo(d.memoNo); if (k) counts[k] = (counts[k]||0) + 1; });
   list.forEach(data=>{
     const tr = document.createElement('tr');
+    const isDup = counts[normNo(data.memoNo)] > 1;
+    if (isDup) tr.className = 'dup-row';
     const savedStr = data.savedAt ? new Date(data.savedAt).toLocaleString('th-TH') : '';
     const updatedStr = data.updatedAt ? new Date(data.updatedAt).toLocaleString('th-TH') : '';
     tr.innerHTML = `
-      <td>${escapeHtml(data.memoNo||'-')}</td>
-      <td>${escapeHtml(data.memoDate||'-')}</td>
+      <td>${escapeHtml(data.memoNo||'-')}${isDup ? '<span class="dup-badge">เลขที่ซ้ำ</span>' : ''}</td>
+      <td>${escapeHtml(normalizeDate(data.memoDate)||'-')}</td>
       <td>${escapeHtml(data.custName||'-')}</td>
       <td>${escapeHtml(data.itemsTotal||'0.00')}</td>
       <td>${updatedStr ? 'แก้ไข '+updatedStr : 'บันทึก '+savedStr}</td>
@@ -555,6 +610,7 @@ function renderList(list){
     el.appendChild(tr);
   });
   window._memoCache = list;
+  checkDupNow();
 }
 
 function editFromDb(id){
@@ -588,7 +644,7 @@ function loadMemo(id){
 
 function applyDataToForm(data){
   setVal('companyName', data.companyName); setVal('companyTax', data.companyTax); setVal('companyAddr', data.companyAddr);
-  setVal('memoNo', data.memoNo); setVal('memoDate', data.memoDate);
+  setVal('memoNo', data.memoNo); setVal('memoDate', normalizeDate(data.memoDate));
   setVal('custName', data.custName); setVal('custTax', data.custTax); setVal('custAddr', data.custAddr);
   setVal('refInv', data.refInv); setVal('refItem', data.refItem);
   setVal('details', data.details);

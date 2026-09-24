@@ -450,7 +450,7 @@ document.querySelectorAll('textarea.desc, textarea.sum-desc').forEach(autoGrow);
 
 // ---- Shared backend (Google Apps Script Web App + Google Sheet) ----
 // วาง Web app URL จาก Apps Script ตรงนี้ (ดูวิธีทำใน apps_script_backend.gs)
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyh6KDP9xCEnHppoUMANwuJaLa4osuSXiVsJ5kq-nfvCZRzy-2RBuajdOShJ0vPhqz7Cg/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyaEJf-1r3RLXR7ZKID17XLUn61lg-igLJ7OKdeVDVLjG6WeB-BGwnnP3nuylIWr9KBEQ/exec';
 
 function showTab(name){
   const isForm = name === 'form';
@@ -527,19 +527,31 @@ window._suggIdx = -1;
 function normName(v){ return String(v||'').replace(/\s+/g,' ').trim().toLowerCase(); }
 async function loadCustomers(){
   const st = document.getElementById('custDbStatus');
+  let reason = '';
   try{
     const res = await fetch(SCRIPT_URL + '?action=customers');
     const list = await res.json();
-    window._customers = Array.isArray(list) ? list.filter(c => c && c.name) : [];
+    if (Array.isArray(list)){
+      window._customers = list.filter(c => c && c.name);
+      if (!window._customers.length){
+        reason = list.length
+          ? 'Apps Script ที่ Deploy อยู่ยังเป็นโค้ดเวอร์ชันเก่า (ยังไม่มีส่วนดึงรายชื่อลูกค้า) — ให้ Deploy เป็น New version'
+          : 'ไม่พบข้อมูลในแท็บ "Data" (ตรวจชื่อแท็บ และว่าสคริปต์ผูกกับชีตนี้)';
+      }
+    } else {
+      window._customers = [];
+      reason = 'Apps Script ตอบกลับผิดพลาด: ' + ((list && list.message) || 'ไม่ทราบสาเหตุ');
+    }
   }catch(e){
     window._customers = [];
+    reason = 'เชื่อมต่อ Apps Script ไม่ได้';
   }
   if (window._customers.length){
     st.style.color = 'var(--muted)';
     st.textContent = 'ฐานข้อมูลลูกค้า ' + window._customers.length + ' ราย — พิมพ์ชื่อบางส่วนแล้วเลือกจากรายการ';
   } else {
     st.style.color = '#E5766B';
-    st.textContent = '⚠ โหลดฐานข้อมูลลูกค้าไม่ได้ (ตรวจว่า Deploy Apps Script เวอร์ชันล่าสุดแล้ว และมีแท็บ Data)';
+    st.textContent = '⚠ โหลดฐานข้อมูลลูกค้าไม่ได้: ' + reason;
   }
 }
 function hideCustSuggest(){

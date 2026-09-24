@@ -228,6 +228,16 @@
   #printSheet .p-footer-push{
     margin-top:auto;
   }
+  .popup-overlay{position:fixed;inset:0;z-index:9999;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.45);padding:16px;}
+  .popup-overlay.show{display:flex;}
+  .popup-card{background:var(--paper);color:var(--ink);border:1px solid var(--line);border-radius:14px;padding:28px 34px;min-width:260px;max-width:90vw;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,.35);}
+  .popup-icon{font-size:38px;line-height:1;margin-bottom:10px;}
+  .popup-msg{font-size:16px;font-weight:600;}
+  .popup-sub{font-size:13px;color:var(--muted);margin-top:6px;}
+  .popup-spinner{width:38px;height:38px;margin:0 auto 12px;border:4px solid var(--line);border-top-color:var(--blue-border);border-radius:50%;animation:popspin .8s linear infinite;}
+  @keyframes popspin{to{transform:rotate(360deg);}}
+  .popup-close{margin-top:16px;}
+  @media print{.popup-overlay{display:none !important;}}
 </style>
 </head>
 <body>
@@ -508,9 +518,39 @@ async function fetchListSilently(){
   return null;
 }
 
+// ---- Popup กลางจอ (กำลังทำงาน / สำเร็จ / ผิดพลาด) ----
+let _popupTimer = null;
+function showPopup(state, msg, sub){
+  clearTimeout(_popupTimer);
+  const icon = document.getElementById('popupIcon');
+  if (state === 'loading') icon.innerHTML = '<div class="popup-spinner"></div>';
+  else if (state === 'success') icon.innerHTML = '<div class="popup-icon" style="color:var(--green-border);">✓</div>';
+  else icon.innerHTML = '<div class="popup-icon" style="color:#E5766B;">⚠</div>';
+  document.getElementById('popupMsg').textContent = msg || '';
+  document.getElementById('popupSub').textContent = sub || '';
+  document.getElementById('popupClose').style.display = (state === 'error') ? '' : 'none';
+  document.getElementById('popup').classList.add('show');
+  if (state === 'success') _popupTimer = setTimeout(hidePopup, 1400);
+}
+function hidePopup(){
+  clearTimeout(_popupTimer);
+  document.getElementById('popup').classList.remove('show');
+}
+async function postToBackend(body){
+  const res = await fetch(SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // กัน CORS preflight
+    body: JSON.stringify(body)
+  });
+  let out = null;
+  try{ out = await res.json(); }catch(e){}
+  if (out && out.status === 'error') throw new Error(out.message || 'backend error');
+}
+
 async function saveMemo(){
   const statusEl = document.getElementById('saveStatus');
-  statusEl.textContent = 'กำลังบันทึก...';
+  statusEl.textContent = '';
+  showPopup('loading', 'กำลังบันทึก...', 'กรุณารอสักครู่');
   try{
     const data = collectData();
     const isUpdate = !!window._currentId;
@@ -519,6 +559,7 @@ async function saveMemo(){
     const dups = findDuplicates(data.memoNo, fresh || window._memoCache);
     if (dups.length){
       const lines = dups.slice(0,3).map(d => '• ' + (d.memoNo||'-') + ' | ' + (d.custName||'-') + ' | ' + (normalizeDate(d.memoDate)||'-') + ' | ' + (d.itemsTotal||'0.00')).join('\n');
+      hidePopup();
       const ok = confirm('⚠ เลขที่เอกสาร "' + data.memoNo + '" ซ้ำกับรายการที่มีอยู่แล้ว ' + dups.length + ' รายการ:\n' + lines + '\n\nต้องการบันทึกต่อหรือไม่?\n(กด Cancel เพื่อกลับไปแก้เลขที่)');
       if (!ok){
         statusEl.textContent = 'ยกเลิกการบันทึก — เลขที่เอกสารซ้ำ';
@@ -526,22 +567,18 @@ async function saveMemo(){
         checkDupNow();
         return;
       }
+      showPopup('loading', 'กำลังบันทึก...', 'กรุณารอสักครู่');
     }
     data.id = isUpdate ? window._currentId : ('m' + Date.now());
     data.savedAt = isUpdate ? (window._currentSavedAt || Date.now()) : Date.now();
-    await fetch(SCRIPT_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // กัน CORS preflight
-      body: JSON.stringify({ type: isUpdate ? 'update' : 'save', data: data })
-    });
+    await postToBackend({ type: isUpdate ? 'update' : 'save', data: data });
     window._currentId = data.id;
     window._currentSavedAt = data.savedAt;
     setEditingBadge(data.memoNo);
-    statusEl.textContent = isUpdate ? 'อัปเดตแล้ว ✓' : 'บันทึกแล้ว ✓';
-    setTimeout(()=>{ statusEl.textContent=''; }, 2500);
+    showPopup('success', isUpdate ? 'อัปเดตแล้ว' : 'บันทึกแล้ว', data.memoNo || '');
     refreshList();
   }catch(e){
-    statusEl.textContent = 'บันทึกไม่สำเร็จ ตรวจสอบ SCRIPT_URL / การเชื่อมต่อ';
+    showPopup('error', 'บันทึกไม่สำเร็จ', 'ตรวจสอบ SCRIPT_URL / การเชื่อมต่ออินเทอร์เน็ต');
   }
 }
 
@@ -678,13 +715,13 @@ function applyDataToForm(data){
 async function deleteMemo(id){
   if (!confirm('ลบรายการนี้ใช่ไหม?')) return;
   if (window._currentId === id){ window._currentId = null; window._currentSavedAt = null; setEditingBadge(null); }
+  showPopup('loading', 'กำลังลบ...', 'กรุณารอสักครู่');
   try{
-    await fetch(SCRIPT_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ type: 'delete', id: id })
-    });
-  }catch(e){}
+    await postToBackend({ type: 'delete', id: id });
+    showPopup('success', 'ลบแล้ว', '');
+  }catch(e){
+    showPopup('error', 'ลบไม่สำเร็จ', 'ตรวจสอบการเชื่อมต่ออินเทอร์เน็ต');
+  }
   refreshList();
 }
 
@@ -850,5 +887,13 @@ window.addEventListener('afterprint', ()=>{ document.getElementById('printSheet'
 function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function escapeAttr(s){ return escapeHtml(s); }
 </script>
+<div id="popup" class="popup-overlay" role="alertdialog" aria-live="assertive">
+  <div class="popup-card">
+    <div id="popupIcon"></div>
+    <div id="popupMsg" class="popup-msg"></div>
+    <div id="popupSub" class="popup-sub"></div>
+    <button id="popupClose" class="btn popup-close" style="display:none;" onclick="hidePopup()">ปิด</button>
+  </div>
+</div>
 </body>
 </html>

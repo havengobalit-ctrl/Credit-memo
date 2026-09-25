@@ -681,7 +681,7 @@ function updatePresenceUI_(count){
     return;
   }
   dot.textContent = count;
-  text.textContent = count <= 1 ? '';
+  text.textContent = count <= 1 ? '' : '';
   if (count > 0){
     dot.classList.add('online');
     dot.classList.toggle('busy', count >= PRESENCE_BUSY_THRESHOLD);

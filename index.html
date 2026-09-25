@@ -694,7 +694,7 @@ function startPresenceHeartbeat_(){
   });
 }
 
-
+async function fetchListSilently(){
   try{
     const res = await fetch(SCRIPT_URL);
     const list = await res.json();

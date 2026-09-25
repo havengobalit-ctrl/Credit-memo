@@ -238,13 +238,40 @@
   .presence-dot.online.busy{background:#C0554A;animation:presencepulseRed var(--pulse-duration,1.6s) ease-in-out infinite;}
   @keyframes presencepulseGreen{0%,100%{box-shadow:0 0 0 0 rgba(63,166,94,.55);}50%{box-shadow:0 0 0 4px rgba(63,166,94,0);}}
   @keyframes presencepulseRed{0%,100%{box-shadow:0 0 0 0 rgba(192,85,74,.55);}50%{box-shadow:0 0 0 4px rgba(192,85,74,0);}}
+
+  /* ---- layout: main column + floating side panel (ยอดคงค้าง / ต้องชำระเพิ่ม) ---- */
+  .page-layout{display:flex;flex-direction:column;gap:16px;max-width:820px;margin:0 auto;}
+  .main-col{min-width:0;}
+  .print-bar{max-width:none;width:100%;margin:0 0 12px;}
+  .tabs{max-width:none;width:100%;margin:0 0 12px;flex-wrap:wrap;}
+  .side-panel{width:100%;}
+  .side-panel-inner{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:14px 16px;box-shadow:0 1px 3px rgba(0,0,0,.08);}
+  .side-panel-inner .field:last-child{margin-bottom:0;}
+  @media (min-width:1150px){
+    .page-layout{flex-direction:row;align-items:flex-start;justify-content:center;max-width:1080px;}
+    .main-col{flex:1;max-width:820px;}
+    .side-panel{width:220px;flex:none;position:sticky;top:20px;}
+  }
+
+  /* ---- Summary tab ---- */
+  .summary-company-card{border:1px solid var(--line);border-radius:8px;padding:12px 14px;margin-bottom:14px;}
+  .summary-company-name{font-weight:700;font-size:15px;margin-bottom:8px;}
+  .summary-company-table{width:100%;border-collapse:collapse;}
+  .summary-company-table th{text-align:left;font-size:12px;color:var(--muted);font-weight:600;padding:5px 6px;border-bottom:1px solid var(--line);}
+  .summary-company-table td{padding:5px 6px;font-size:13.5px;border-bottom:1px dashed var(--line);}
+  .summary-company-table .num-cell{text-align:right;white-space:nowrap;}
+  .summary-company-table tfoot td{border-bottom:none;border-top:1.5px solid var(--line);font-weight:700;padding-top:8px;}
 </style>
 </head>
 <body>
 
+<div class="page-layout">
+  <div class="main-col">
+
 <div class="print-bar"><button class="btn ghost" onclick="printMemo()">พิมพ์ / บันทึกเป็น PDF</button></div>
 
 <div class="tabs">
+  <button class="tab-btn" id="tabSummaryBtn" onclick="showTab('summary')">Summary</button>
   <button class="tab-btn active" id="tabFormBtn" onclick="showTab('form')">Credit Memo</button>
   <button class="tab-btn" id="tabDbBtn" onclick="showTab('db')">Database</button>
   <div class="presence-badge" title="จำนวนคนที่เปิดหน้านี้อยู่ตอนนี้ (นับรวมตัวเอง) จุดเขียวติด = มีคนอื่นกำลังใช้งานพร้อมกัน">
@@ -380,6 +407,35 @@ The above amount is calculated based on the actual amount paid after discount.</
   </section>
 </div>
 
+<div class="sheet" id="summaryView" style="display:none;">
+  <section class="section" style="border-left:5px solid var(--muted);">
+    <div class="tag"></div>
+    <div class="toolbar" style="margin-top:0;margin-bottom:10px;">
+      <button class="btn" onclick="refreshSummary(true)">รีเฟรช</button>
+    </div>
+    <div id="summaryTotalsBar" style="margin-bottom:14px;font-size:14px;color:var(--muted);"></div>
+    <div id="summaryGroups"></div>
+  </section>
+</div>
+
+  </div><!-- /main-col -->
+
+  <aside class="side-panel" id="sidePanel">
+    <div class="side-panel-inner">
+      <div class="tag" style="margin-bottom:10px;">ติดตามยอด (บันทึกลงระบบ แต่ไม่แสดงตอนพิมพ์)</div>
+      <div class="field">
+        <label>ยอดคงค้าง</label>
+        <input id="outstanding" type="number" step="0.01" placeholder="0.00">
+      </div>
+      <div class="field">
+        <label>ต้องชำระเพิ่ม</label>
+        <input id="additionalDue" type="number" step="0.01" placeholder="0.00">
+      </div>
+    </div>
+  </aside>
+
+</div><!-- /page-layout -->
+
 <script>
 const DEFAULT_SUMMARY = [
   'ยอดเงินเครดิตคงเหลือสุทธิ\nNET CREDIT BALANCE',
@@ -447,11 +503,24 @@ const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzekpl6Eg8ulCxJq-r2I
 
 function showTab(name){
   const isForm = name === 'form';
+  const isDb = name === 'db';
+  const isSummary = name === 'summary';
   document.getElementById('formView').style.display = isForm ? '' : 'none';
-  document.getElementById('dbView').style.display = isForm ? 'none' : '';
+  document.getElementById('dbView').style.display = isDb ? '' : 'none';
+  document.getElementById('summaryView').style.display = isSummary ? '' : 'none';
   document.getElementById('tabFormBtn').classList.toggle('active', isForm);
-  document.getElementById('tabDbBtn').classList.toggle('active', !isForm);
-  if (!isForm) refreshList(true);
+  document.getElementById('tabDbBtn').classList.toggle('active', isDb);
+  document.getElementById('tabSummaryBtn').classList.toggle('active', isSummary);
+  document.getElementById('sidePanel').style.display = isForm ? '' : 'none';
+  if (isDb){
+    // ใช้ข้อมูลที่แคชไว้แล้ว (จากตอนโหลดหน้าเว็บ/บันทึก/รีเฟรชล่าสุด) ไม่ต้องยิง request ใหม่ทุกครั้งที่สลับแท็บ
+    if (Array.isArray(window._memoCache)) renderList(window._memoCache);
+    else refreshList(true);
+  }
+  if (isSummary){
+    if (Array.isArray(window._memoCache)) renderSummary(window._memoCache);
+    else refreshSummary(true);
+  }
 }
 
 if (SCRIPT_URL.indexOf('PASTE_YOUR') === 0) {
@@ -484,6 +553,8 @@ function collectData(){
     itemsTotal: document.getElementById('itemsTotal').textContent,
     summaryItems: summaryItems,
     details: val('details'),
+    outstanding: val('outstanding'),
+    additionalDue: val('additionalDue'),
   };
 }
 function val(id){ return document.getElementById(id).value; }
@@ -774,6 +845,8 @@ function newMemo(){
     el.value = '';
   });
   resetSummaryRows();
+  setVal('outstanding', '');
+  setVal('additionalDue', '');
   const tbody = document.getElementById('itemsBody');
   tbody.innerHTML = '<tr><td><textarea class="desc" rows="1" oninput="autoGrow(this)"></textarea></td><td class="num"><input type="number" class="unitprice" step="0.01" oninput="syncAmount(this)"></td><td class="num"><input type="number" class="amount" step="0.01"></td><td class="row-actions"><button class="btn remove" onclick="removeRow(this)">ลบ</button></td></tr>';
   updateTotal();
@@ -834,6 +907,61 @@ function renderList(list){
   checkDupNow();
 }
 
+async function refreshSummary(withPopup){
+  if (withPopup) showPopup('loading', 'กำลังโหลดข้อมูล...', 'กรุณารอสักครู่');
+  try{
+    const list = await fetchListSilently();
+    renderSummary(list || window._memoCache || []);
+    if (withPopup) hidePopup();
+  }catch(e){
+    if (withPopup) showPopup('error', 'โหลดข้อมูลไม่สำเร็จ', 'ตรวจสอบการเชื่อมต่ออินเทอร์เน็ต แล้วลองอีกครั้ง');
+  }
+}
+
+function renderSummary(list){
+  const groupsEl = document.getElementById('summaryGroups');
+  const totalsBar = document.getElementById('summaryTotalsBar');
+  groupsEl.innerHTML = '';
+  if (!list || !list.length){
+    groupsEl.innerHTML = '<div style="color:var(--muted);font-size:13px;">ยังไม่มีรายการที่บันทึกไว้</div>';
+    totalsBar.textContent = '';
+    return;
+  }
+  const groups = {};
+  list.forEach(d=>{
+    const key = (d.custName || '').trim() || '(ไม่ระบุชื่อลูกค้า)';
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(d);
+  });
+  const names = Object.keys(groups).sort((a,b)=> a.localeCompare(b, 'th'));
+  let grandOutstanding = 0, grandDue = 0;
+
+  names.forEach(name=>{
+    const memos = groups[name].slice().sort((a,b)=> Number(b.savedAt) - Number(a.savedAt));
+    let subOutstanding = 0, subDue = 0;
+    const rows = memos.map(m=>{
+      const out = parseFloat(m.outstanding) || 0;
+      const due = parseFloat(m.additionalDue) || 0;
+      subOutstanding += out; subDue += due;
+      return `<tr><td>${escapeHtml(m.memoNo||'-')}</td><td class="num-cell">${fmt(out)}</td><td class="num-cell">${fmt(due)}</td></tr>`;
+    }).join('');
+    grandOutstanding += subOutstanding; grandDue += subDue;
+
+    const card = document.createElement('div');
+    card.className = 'summary-company-card';
+    card.innerHTML = `
+      <div class="summary-company-name">${escapeHtml(name)}</div>
+      <table class="summary-company-table">
+        <thead><tr><th>เลขที่เอกสาร</th><th>ยอดคงค้าง</th><th>ต้องชำระเพิ่ม</th></tr></thead>
+        <tbody>${rows}</tbody>
+        <tfoot><tr><td>รวม</td><td class="num-cell">${fmt(subOutstanding)}</td><td class="num-cell">${fmt(subDue)}</td></tr></tfoot>
+      </table>`;
+    groupsEl.appendChild(card);
+  });
+
+  totalsBar.innerHTML = `รวมทั้งหมดทุกบริษัท &nbsp;|&nbsp; ยอดคงค้าง: <b>${fmt(grandOutstanding)}</b> &nbsp;|&nbsp; ต้องชำระเพิ่ม: <b>${fmt(grandDue)}</b>`;
+}
+
 function editFromDb(id){
   loadMemo(id);
   showTab('form');
@@ -869,6 +997,8 @@ function applyDataToForm(data){
   setVal('custName', data.custName); setVal('custTax', data.custTax); setVal('custAddr', data.custAddr);
   setVal('refInv', data.refInv); setVal('refItem', data.refItem);
   setVal('details', data.details);
+  setVal('outstanding', data.outstanding);
+  setVal('additionalDue', data.additionalDue);
   const tbody = document.getElementById('itemsBody');
   tbody.innerHTML = '';
   (data.items && data.items.length ? data.items : [{desc:'',unitPrice:'',amount:''}]).forEach(it=>{

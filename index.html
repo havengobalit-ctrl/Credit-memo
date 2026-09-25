@@ -454,7 +454,6 @@ function showTab(name){
   if (!isForm) refreshList(true);
 }
 
-if (SCRIPT_URL.indexOf('PASTE_YOUR') !== 0) { initialLoad_(); }
 if (SCRIPT_URL.indexOf('PASTE_YOUR') === 0) {
   document.getElementById('saveStatus').textContent = 'ยังไม่ได้ตั้งค่า SCRIPT_URL ในไฟล์นี้';
 }
@@ -1050,6 +1049,11 @@ function printMemo(){
 window.addEventListener('afterprint', ()=>{ document.getElementById('printSheet').innerHTML = ''; });
 function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function escapeAttr(s){ return escapeHtml(s); }
+
+// เรียกโหลดข้อมูลตอนเปิดหน้าเว็บครั้งแรก — ต้องอยู่ท้ายสุดของสคริปต์ หลังจากทุกฟังก์ชัน/ตัวแปร (let/const)
+// ถูกประกาศครบแล้วเท่านั้น ไม่งั้นจะชนกับกฎ Temporal Dead Zone ของ JavaScript (เรียกใช้ตัวแปร let/const
+// ก่อนถึงบรรทัดประกาศไม่ได้ จะเกิด "Cannot access ... before initialization" ทำให้สคริปต์พังทั้งไฟล์)
+if (SCRIPT_URL.indexOf('PASTE_YOUR') !== 0) { initialLoad_(); }
 </script>
 <div id="popup" class="popup-overlay" role="alertdialog" aria-live="assertive">
   <div class="popup-card">

@@ -102,13 +102,8 @@
   #dbTable td{padding:8px 6px;border-bottom:1px solid var(--line);font-size:13px;vertical-align:top;}
   #dbTable .db-actions{display:flex;gap:6px;flex-wrap:wrap;}
 
-  /* ---- Formatted print / PDF output (matches official Credit Memo document) ---- */
   #printSheet{display:none;}
   @media print{
-    /* สำคัญ: ห้ามใช้ position:absolute กับ #printSheet เพราะจะทำให้ตารางหลุดจาก
-       การไหลปกติของหน้าเอกสาร ผลคือ thead (ส่วนหัวที่ต้องพิมพ์ซ้ำ) จะไม่ตามไป
-       หน้า 2/3/4 — ให้ซ่อนส่วนอื่นด้วย display:none แล้วปล่อยให้ #printSheet
-       ไหลตามปกติแทน จึงจะเบรกหน้าและพิมพ์หัวตารางซ้ำได้ถูกต้อง */
     body > *:not(#printSheet){display:none !important;}
     body{margin:0;}
     #printSheet{
@@ -150,12 +145,6 @@
   #printSheet .p-page-table > thead{display:table-header-group;}
   #printSheet .p-page-table > tbody{display:table-row-group;}
   #printSheet thead{display:table-header-group;}
-  /* หมายเหตุ: ห้ามใส่ page-break-inside:avoid ให้ tbody tr แบบเหมาทุกแถว —
-     เมื่อใช้ร่วมกับ thead ที่พิมพ์ซ้ำทุกหน้า Chrome จะมีบั๊ก (crbug.com/24826: repeating
-     header forces a strut on the rows) ทำให้แถวที่อยู่ตรงรอยตัดหน้าโดน "ยืด" จนเกิดช่องว่าง
-     เปล่าๆ ขนาดใหญ่ และบางครั้งข้อมูลแถวเดิมถูกพิมพ์ซ้ำข้ามไปอีกหน้า (ข้อมูลซ้ำ 2 หน้า)
-     จึงปล่อยให้ทุกแถวตัดหน้าได้ตามปกติ ไม่บังคับ avoid เลย — แถวแต่ละอันสั้นแค่บรรทัดเดียวอยู่แล้ว
-     จึงไม่มีปัญหาเรื่องถูกตัดครึ่งกลางแถว */
   #printSheet .p-page-table > thead > tr > th.p-letterhead-cell{
     border:0;
     padding:0 0 10px 0;
@@ -219,9 +208,6 @@
     font-size:12px;
     margin-bottom:2px;
   }
-  /* ให้ส่วนท้าย (สรุปยอด/รายละเอียด) ดันไปชนขอบล่างสุดของหน้า: ทำให้ .p-print-page เป็น
-     flex column สูงเท่าพื้นที่ใช้งานจริงของกระดาษ (A4 ลบ margin บน-ล่าง 16mm) แล้วให้
-     .p-footer-push มี margin-top:auto ไปกินพื้นที่ว่างทั้งหมดที่เหลือ ดันตัวเองลงล่างสุด */
   #printSheet .p-print-page{
     display:flex;
     flex-direction:column;
@@ -272,7 +258,6 @@
 
 <div class="sheet" id="formView">
 
-  <!-- YELLOW: HEADER -->
   <section class="section yellow">
     <div class="tag"></div>
     <h1>Credit Memo</h1>
@@ -324,7 +309,6 @@
     </div>
   </section>
 
-  <!-- BLUE: CONTENT / LINE ITEMS -->
   <section class="section blue">
     <div class="tag"></div>
     <table id="itemsTable">
@@ -346,7 +330,6 @@
     <span id="itemsTotal" style="display:none;">0.00</span>
   </section>
 
-  <!-- GREEN: SUMMARY -->
   <section class="section green">
     <div class="tag"></div>
     <table id="summaryTable">
@@ -375,8 +358,6 @@ The above amount is calculated based on the actual amount paid after discount.</
       <span id="editingBadge" style="font-size:12.5px;color:var(--blue-border);align-self:center;display:none;"></span>
     </div>
   </section>
-
-  <!-- (list moved to dbView tab below) -->
 
 </div>
 
@@ -462,8 +443,6 @@ updateTotal();
 resetSummaryRows();
 document.querySelectorAll('textarea.desc, textarea.sum-desc').forEach(autoGrow);
 
-// ---- Shared backend (Google Apps Script Web App + Google Sheet) ----
-// วาง Web app URL จาก Apps Script ตรงนี้ (ดูวิธีทำใน apps_script_backend.gs)
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzekpl6Eg8ulCxJq-r2IjKcVPp09R4nepS7VsYV8uIQiyNhVi-S8eCcsaRPmgv13woaCw/exec';
 
 function showTab(name){
@@ -510,7 +489,6 @@ function collectData(){
 }
 function val(id){ return document.getElementById(id).value; }
 
-// ---- ตรวจเลขที่เอกสารซ้ำ / จัดรูปวันที่ ----
 function normNo(v){ return String(v||'').trim().toLowerCase(); }
 function normalizeDate(v){
   if (!v) return '';
@@ -535,7 +513,6 @@ function checkDupNow(){
     el.textContent = '⚠ เลขที่นี้ซ้ำกับรายการที่มีอยู่แล้ว ' + dups.length + ' รายการ';
   } else { el.style.display = 'none'; el.textContent = ''; }
 }
-// ---- ฐานข้อมูลลูกค้า (แท็บ "Data" ใน Google Sheet) : พิมพ์ชื่อบางส่วน > เลือก > เติม Tax ID / ที่อยู่ ----
 window._customers = [];
 window._suggIdx = -1;
 function normName(v){ return String(v||'').replace(/\s+/g,' ').trim().toLowerCase(); }
@@ -634,13 +611,12 @@ function onCustNameInput(){
 
 async function refreshAll(){
   const btn = document.getElementById('refreshAllBtn');
-  if (btn.disabled) return; // กันกดซ้ำระหว่างกำลังรีเฟรชหรือช่วง cooldown
+  if (btn.disabled) return;
   const originalHTML = btn.innerHTML;
   btn.disabled = true;
   btn.innerHTML = '<span class="mini-spinner"></span>กำลังรีเฟรช...';
   showPopup('loading', 'กำลังรีเฟรชทั้งหมด...', 'ล้างแคชและโหลดข้อมูลใหม่');
   try{
-    // สั่งล้างแคชลูกค้าฝั่ง backend ก่อน (ถ้า backend เป็นโค้ดเก่าที่ยังไม่รองรับ action นี้ จะไม่มีผลอะไร ไม่ทำให้พัง)
     try{ await fetch(SCRIPT_URL + '?action=clearCache'); }catch(e){}
     const [list] = await Promise.all([
       fetchListSilently(),
@@ -653,12 +629,10 @@ async function refreshAll(){
     showPopup('error', 'รีเฟรชไม่สำเร็จ', 'ตรวจสอบการเชื่อมต่ออินเทอร์เน็ต แล้วลองอีกครั้ง');
   } finally {
     btn.innerHTML = originalHTML;
-    // ปิดปุ่มไว้อีก 5 วิหลังทำเสร็จ กันกดรัวๆ ซ้ำจนแคชที่เพิ่งล้างไม่มีประโยชน์
     setTimeout(()=>{ btn.disabled = false; }, 5000);
   }
 }
 
-// ---- สถานะคนออนไลน์ (ไอคอนรูปคน + จุดเขียว) ----
 function getSessionId_(){
   try{
     var sid = sessionStorage.getItem('cmSessionId');
@@ -668,7 +642,6 @@ function getSessionId_(){
 }
 window._sessionId = getSessionId_();
 
-// จำนวนคนที่ถือว่า "เยอะ" แล้วให้จุดเปลี่ยนเป็นสีแดง (ปรับตัวเลขนี้ได้ตามต้องการ)
 var PRESENCE_BUSY_THRESHOLD = 5;
 
 function updatePresenceUI_(count){
@@ -685,7 +658,6 @@ function updatePresenceUI_(count){
   if (count > 0){
     dot.classList.add('online');
     dot.classList.toggle('busy', count >= PRESENCE_BUSY_THRESHOLD);
-    // ยิ่งคนเยอะ ยิ่งกระพริบถี่ขึ้น — เริ่มที่ 1.6 วิ/รอบตอนมี 1 คน ลดลงเรื่อยๆ แต่ไม่เร็วกว่า 0.4 วิ/รอบ
     const duration = Math.max(0.4, 1.6 - (count - 1) * 0.15);
     dot.style.setProperty('--pulse-duration', duration + 's');
   } else {
@@ -694,18 +666,27 @@ function updatePresenceUI_(count){
   }
 }
 
+window._presenceReady = false;
 async function sendHeartbeat_(){
-  // เงียบไว้ถ้าเช็กไม่สำเร็จ ไม่รบกวนผู้ใช้ด้วย popup — เป็นแค่ตัวบอกสถานะเสริม
   try{
     const res = await fetch(SCRIPT_URL + '?action=heartbeat&cid=' + encodeURIComponent(getSessionId_()));
     const data = await res.json();
-    updatePresenceUI_(data && typeof data.count === 'number' ? data.count : undefined);
-  }catch(e){ /* ไม่ต้องทำอะไร รอบถัดไปลองใหม่ */ }
+    const count = data && typeof data.count === 'number' ? data.count : undefined;
+    updatePresenceUI_(count);
+    if (!window._presenceReady && count !== undefined){
+      window._presenceReady = true;
+      hidePopup();
+    }
+  }catch(e){
+    if (!window._presenceReady){
+      showPopup('error', 'เชื่อมต่อสถานะผู้ใช้งานไม่สำเร็จ', 'ตรวจสอบการเชื่อมต่ออินเทอร์เน็ต แล้วรีเฟรชหน้าเว็บ');
+    }
+  }
 }
 function startPresenceHeartbeat_(){
+  showPopup('loading', 'กำลังเชื่อมต่อ...', 'ตรวจสอบสถานะผู้ใช้งานที่ออนไลน์อยู่');
   sendHeartbeat_();
   setInterval(function(){
-    // ไม่ส่ง heartbeat ตอนแท็บถูกซ่อน/ย่อ กันเปลืองโควตาเปล่าๆ
     if (document.visibilityState === 'visible') sendHeartbeat_();
   }, 20000);
   document.addEventListener('visibilitychange', function(){
@@ -722,7 +703,6 @@ async function fetchListSilently(){
   return null;
 }
 
-// ---- Popup กลางจอ (กำลังทำงาน / สำเร็จ / ผิดพลาด) ----
 let _popupTimer = null;
 function showPopup(state, msg, sub){
   clearTimeout(_popupTimer);
@@ -743,7 +723,7 @@ function hidePopup(){
 async function postToBackend(body){
   const res = await fetch(SCRIPT_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // กัน CORS preflight
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify(body)
   });
   let out = null;
@@ -758,7 +738,6 @@ async function saveMemo(){
   try{
     const data = collectData();
     const isUpdate = !!window._currentId;
-    // เช็กเลขที่ซ้ำกับข้อมูลล่าสุดในระบบ (ดึงใหม่ก่อนบันทึก เผื่อมีคนอื่นเพิ่งบันทึก)
     const fresh = await fetchListSilently();
     const dups = findDuplicates(data.memoNo, fresh || window._memoCache);
     if (dups.length){
@@ -794,7 +773,7 @@ function newMemo(){
     if (el.id === 'memoDate' || el.id === 'details' || el.classList.contains('sum-check') || el.classList.contains('sum-desc')) return;
     el.value = '';
   });
-  resetSummaryRows();   // คืนแถวและข้อความเดิมทุกครั้งที่เริ่มรายการใหม่
+  resetSummaryRows();
   const tbody = document.getElementById('itemsBody');
   tbody.innerHTML = '<tr><td><textarea class="desc" rows="1" oninput="autoGrow(this)"></textarea></td><td class="num"><input type="number" class="unitprice" step="0.01" oninput="syncAmount(this)"></td><td class="num"><input type="number" class="amount" step="0.01"></td><td class="row-actions"><button class="btn remove" onclick="removeRow(this)">ลบ</button></td></tr>';
   updateTotal();
@@ -865,7 +844,7 @@ function copyMemo(id){
   const data = (window._memoCache || []).find(d=>d.id===id);
   if (!data) return;
   applyDataToForm(data);
-  window._currentId = null;       // สำคัญ: ไม่ผูกกับ id เดิม กด "บันทึกลงระบบ" จะสร้างเป็นรายการใหม่ ไม่ทับของเก่า
+  window._currentId = null;
   window._currentSavedAt = null;
   setEditingBadge(null);
   setVal('memoNo', (data.memoNo||'') + ' (สำเนา)');
@@ -901,7 +880,6 @@ function applyDataToForm(data){
       <td class="row-actions"><button class="btn remove" onclick="removeRow(this)">ลบ</button></td>`;
     tbody.appendChild(tr);
   });
-  // แถวสรุป: รายการเก่าที่เคยติ๊กออก (checked === false) จะไม่นำมาแสดง
   if (Array.isArray(data.summaryItems)){
     document.getElementById('summaryBody').innerHTML = '';
     data.summaryItems.filter(it => it.checked !== false)
@@ -937,13 +915,6 @@ function fmt(n){
 
 function nl2br(s){ return escapeHtml(s||'').replace(/\n/g, '<br>'); }
 
-// สำคัญ: ทดสอบจริงพบว่าฟีเจอร์ "thead พิมพ์ซ้ำอัตโนมัติทุกหน้า" ของ Chrome/Skia (ที่ใช้ตอน
-// Print > Save as PDF) มีบั๊ก (อ้างอิง crbug.com/24826) ที่ทำให้แถวตรงรอยตัดหน้าถูก "ยืด" จน
-// เกิดช่องว่างเปล่าๆ ขนาดใหญ่ และบางครั้งแถวเดิมถูกพิมพ์ซ้ำข้ามไปอีกหน้า (เห็นข้อมูลซ้ำ 2 หน้า)
-// — เกิดขึ้นแม้ปิด page-break-inside:avoid แล้วก็ตาม เพราะเป็นบั๊กของกลไก thead-repeat เอง
-// ไม่ใช่จาก CSS ที่เราเขียน จึงเลิกพึ่งกลไกนี้ทั้งหมด แล้วเปลี่ยนมา "ตัดหน้าเองด้วย JS" แทน:
-// วัดความสูงจริงของแต่ละแถว/บล็อกก่อน แล้วแบ่งเป็นหน้าๆ โดยแต่ละหน้าใช้ตารางของตัวเอง
-// (ไม่มีตารางไหนต้องข้ามหน้าเลย) จึงไม่ไปโดนบั๊กนี้อีก
 function printMemo(){
   const d = collectData();
 
@@ -961,8 +932,6 @@ function printMemo(){
       ${summaryItemsData.map(it=>`<div class="p-row"><span>${nl2br(it.desc)}</span><span>${fmt(it.amount)}</span></div>`).join('')}
     </div>` : '';
 
-  // ส่วนท้าย (สรุปยอด + รายละเอียด) — ผู้ใช้ต้องการให้บล็อกนี้ "ชนขอบล่างสุด" ของหน้าที่มันอยู่
-  // จึงแยกออกจากแถวรายการ ไม่ยัดรวมเป็นแถวในตารางเดียวกันอีกต่อไป แล้วดันลงล่างด้วย flexbox แทน
   const footerHtml = (summaryHtml || detailsHtml) ? `${summaryHtml}${detailsHtml}` : '';
 
   const letterheadHtml = `
@@ -994,17 +963,16 @@ function printMemo(){
 
   const colHeadHtml = `<tr class="p-col-head"><th>DESCRIPTION</th><th>UNIT PRICE</th><th>AMOUNT</th></tr>`;
 
-  const contentBlocks = itemRowHtmls; // ตอนนี้แบ่งหน้าเฉพาะแถวรายการ ส่วนท้ายจัดการแยกทีหลัง
+  const contentBlocks = itemRowHtmls;
 
   const sheet = document.getElementById('printSheet');
 
-  // --- ใช้ #printSheet เป็นพื้นที่ซ่อนไว้วัดความสูงจริง (ต้องแสดงผลชั่วคราวถึงจะวัดได้) ---
   sheet.innerHTML = '';
   sheet.style.cssText = 'display:block;position:fixed;left:-99999px;top:0;visibility:hidden;width:190mm;';
 
   const MM_TO_PX = 96/25.4;
-  const PAGE_HEIGHT_MM = 297 - 16 - 16; // A4 ลบ @page margin บน-ล่างข้างละ 16mm
-  const SAFETY = 0.94; // กันเผื่อความคลาดเคลื่อนเล็กน้อยระหว่างวัดบนจอกับพิมพ์จริง
+  const PAGE_HEIGHT_MM = 297 - 16 - 16;
+  const SAFETY = 0.94;
   const pageHeightPx = PAGE_HEIGHT_MM * MM_TO_PX * SAFETY;
 
   function measurePlainHeight(html){
@@ -1030,8 +998,6 @@ function printMemo(){
   const colHeadH = measureRowHeight(colHeadHtml);
   const blockHeights = contentBlocks.map(measureRowHeight);
 
-  // --- แบ่งหน้า (greedy pack) — letterhead เต็มไปทุกหน้า จึงหักพื้นที่ letterheadH + colHeadH
-  // ออกจากงบความสูงของทุกหน้า (ไม่ใช่แค่หน้าแรก) ---
   const pages = [];
   let current = [];
   let usedH = letterheadH + colHeadH;
@@ -1047,24 +1013,19 @@ function printMemo(){
     usedH += h;
   });
   pages.push(current);
-  const usedHLastPage = usedH; // ความสูงที่ใช้ไปแล้วในหน้าสุดท้าย (หลังใส่แถวรายการครบ)
+  const usedHLastPage = usedH;
 
-  // --- ตัดสินใจว่าส่วนท้าย (สรุปยอด/รายละเอียด) จะไปอยู่หน้าไหน ---
-  // ถ้าเหลือที่พอในหน้าสุดท้าย ให้ไปอยู่หน้าเดียวกับแถวรายการ (แล้วดันชนขอบล่าง)
-  // ถ้าไม่พอ ให้ขึ้นหน้าใหม่อีกหน้าเฉพาะส่วนท้าย (ก็ยังชนขอบล่างของหน้านั้นเหมือนกัน)
   let footerPageIndex = -1;
   if (footerHtml){
     const remainingOnLastPage = pageHeightPx - usedHLastPage;
     if (footerH <= remainingOnLastPage){
       footerPageIndex = pages.length - 1;
     } else {
-      pages.push([]); // หน้าใหม่ ไว้สำหรับส่วนท้ายอย่างเดียว
+      pages.push([]);
       footerPageIndex = pages.length - 1;
     }
   }
 
-  // --- สร้าง HTML สุดท้ายสำหรับพิมพ์: แต่ละหน้าเป็นตารางของตัวเอง ไม่มีตารางไหนข้ามหน้า
-  // มี letterhead เต็มซ้ำทุกหน้า และส่วนท้ายถูกดันให้ชนขอบล่างสุดของหน้าที่มันอยู่ ---
   const pagesHtml = pages.map((rows, idx)=>{
     const isLast = idx === pages.length - 1;
     const hasFooterHere = idx === footerPageIndex;

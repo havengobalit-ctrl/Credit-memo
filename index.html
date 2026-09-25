@@ -64,6 +64,7 @@
     border:1px solid var(--blue-border);background:transparent;color:var(--blue-border);
     border-radius:6px;padding:6px 12px;font-size:13px;cursor:pointer;
   }
+  .btn:disabled{opacity:.55;cursor:not-allowed;}
   .btn.remove{border-color:#C0554A;color:#C0554A;}
   .dup-badge{display:inline-block;margin-left:6px;padding:1px 6px;border:1px solid #C0554A;border-radius:10px;color:#E5766B;font-size:11px;white-space:nowrap;}
   tr.dup-row{background:rgba(192,85,74,.10);}
@@ -244,6 +245,11 @@
   .cust-item{padding:8px 10px;font-size:13.5px;cursor:pointer;color:var(--ink);border-bottom:1px solid var(--line);}
   .cust-item:last-child{border-bottom:none;}
   .cust-item:hover,.cust-item.active{background:var(--blue-bg);}
+  .presence-badge{display:flex;align-items:center;gap:6px;align-self:center;margin-left:auto;font-size:12.5px;color:var(--muted);}
+  .presence-icon{position:relative;font-size:17px;line-height:1;}
+  .presence-dot{position:absolute;right:-7px;bottom:-5px;min-width:15px;height:15px;padding:0 2px;border-radius:8px;background:#9aa1ab;border:2px solid var(--paper);color:#fff;font-size:9.5px;font-weight:700;line-height:11px;text-align:center;display:flex;align-items:center;justify-content:center;}
+  .presence-dot.online{background:#3FA65E;animation:presencepulse 1.6s ease-in-out infinite;}
+  @keyframes presencepulse{0%,100%{box-shadow:0 0 0 0 rgba(63,166,94,.55);}50%{box-shadow:0 0 0 4px rgba(63,166,94,0);}}
 </style>
 </head>
 <body>
@@ -253,6 +259,11 @@
 <div class="tabs">
   <button class="tab-btn active" id="tabFormBtn" onclick="showTab('form')">Credit Memo</button>
   <button class="tab-btn" id="tabDbBtn" onclick="showTab('db')">Database</button>
+  <div class="presence-badge" title="จำนวนคนที่เปิดหน้านี้อยู่ตอนนี้ (นับรวมตัวเอง) จุดเขียวติด = มีคนอื่นกำลังใช้งานพร้อมกัน">
+    <span class="presence-icon">👤<span class="presence-dot" id="presenceDot"></span></span>
+    <span id="presenceText">—</span>
+  </div>
+  <button class="btn ghost" id="refreshAllBtn" style="align-self:center;" onclick="refreshAll()" title="ล้างแคชและโหลดข้อมูลใหม่ทั้งหมด (รายชื่อลูกค้า + รายการเอกสาร)">⟳ รีเฟรชทั้งหมด</button>
 </div>
 
 <div id="printSheet"></div>
@@ -462,7 +473,7 @@ function showTab(name){
   if (!isForm) refreshList(true);
 }
 
-if (SCRIPT_URL.indexOf('PASTE_YOUR') !== 0) { fetchListSilently().then(checkDupNow); loadCustomers(); }
+if (SCRIPT_URL.indexOf('PASTE_YOUR') !== 0) { fetchListSilently().then(checkDupNow); loadCustomers(); startPresenceHeartbeat_(); }
 if (SCRIPT_URL.indexOf('PASTE_YOUR') === 0) {
   document.getElementById('saveStatus').textContent = 'ยังไม่ได้ตั้งค่า SCRIPT_URL ในไฟล์นี้';
 }
@@ -619,7 +630,71 @@ function onCustNameInput(){
   inp.addEventListener('blur', ()=> setTimeout(hideCustSuggest, 150));
 })();
 
-async function fetchListSilently(){
+async function refreshAll(){
+  const btn = document.getElementById('refreshAllBtn');
+  if (btn.disabled) return; // กันกดซ้ำระหว่างกำลังรีเฟรชหรือช่วง cooldown
+  const originalHTML = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="mini-spinner"></span>กำลังรีเฟรช...';
+  showPopup('loading', 'กำลังรีเฟรชทั้งหมด...', 'ล้างแคชและโหลดข้อมูลใหม่');
+  try{
+    // สั่งล้างแคชลูกค้าฝั่ง backend ก่อน (ถ้า backend เป็นโค้ดเก่าที่ยังไม่รองรับ action นี้ จะไม่มีผลอะไร ไม่ทำให้พัง)
+    try{ await fetch(SCRIPT_URL + '?action=clearCache'); }catch(e){}
+    const [list] = await Promise.all([
+      fetchListSilently(),
+      loadCustomers()
+    ]);
+    if (Array.isArray(list)) renderList(list);
+    checkDupNow();
+    showPopup('success', 'รีเฟรชทั้งหมดแล้ว', '');
+  }catch(e){
+    showPopup('error', 'รีเฟรชไม่สำเร็จ', 'ตรวจสอบการเชื่อมต่ออินเทอร์เน็ต แล้วลองอีกครั้ง');
+  } finally {
+    btn.innerHTML = originalHTML;
+    // ปิดปุ่มไว้อีก 5 วิหลังทำเสร็จ กันกดรัวๆ ซ้ำจนแคชที่เพิ่งล้างไม่มีประโยชน์
+    setTimeout(()=>{ btn.disabled = false; }, 5000);
+  }
+}
+
+// ---- สถานะคนออนไลน์ (ไอคอนรูปคน + จุดเขียว) ----
+function getSessionId_(){
+  try{
+    var sid = sessionStorage.getItem('cmSessionId');
+    if (!sid){ sid = 's' + Date.now() + Math.random().toString(36).slice(2,8); sessionStorage.setItem('cmSessionId', sid); }
+    return sid;
+  }catch(e){ return 's' + Date.now() + Math.random().toString(36).slice(2,8); }
+}
+window._sessionId = getSessionId_();
+
+function updatePresenceUI_(count){
+  const dot = document.getElementById('presenceDot');
+  const text = document.getElementById('presenceText');
+  if (typeof count !== 'number'){ text.textContent = '—'; dot.textContent = ''; dot.classList.remove('online'); return; }
+  dot.textContent = count;
+  text.textContent = count <= 1 ? 'ออนไลน์แค่คุณ' : count + ' คนออนไลน์';
+  if (count > 1) dot.classList.add('online'); else dot.classList.remove('online');
+}
+
+async function sendHeartbeat_(){
+  // เงียบไว้ถ้าเช็กไม่สำเร็จ ไม่รบกวนผู้ใช้ด้วย popup — เป็นแค่ตัวบอกสถานะเสริม
+  try{
+    const res = await fetch(SCRIPT_URL + '?action=heartbeat&sid=' + encodeURIComponent(window._sessionId));
+    const data = await res.json();
+    updatePresenceUI_(data && typeof data.count === 'number' ? data.count : undefined);
+  }catch(e){ /* ไม่ต้องทำอะไร รอบถัดไปลองใหม่ */ }
+}
+function startPresenceHeartbeat_(){
+  sendHeartbeat_();
+  setInterval(function(){
+    // ไม่ส่ง heartbeat ตอนแท็บถูกซ่อน/ย่อ กันเปลืองโควตาเปล่าๆ
+    if (document.visibilityState === 'visible') sendHeartbeat_();
+  }, 20000);
+  document.addEventListener('visibilitychange', function(){
+    if (document.visibilityState === 'visible') sendHeartbeat_();
+  });
+}
+
+
   try{
     const res = await fetch(SCRIPT_URL);
     const list = await res.json();

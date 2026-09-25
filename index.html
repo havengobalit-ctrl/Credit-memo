@@ -1053,7 +1053,17 @@ function escapeAttr(s){ return escapeHtml(s); }
 // เรียกโหลดข้อมูลตอนเปิดหน้าเว็บครั้งแรก — ต้องอยู่ท้ายสุดของสคริปต์ หลังจากทุกฟังก์ชัน/ตัวแปร (let/const)
 // ถูกประกาศครบแล้วเท่านั้น ไม่งั้นจะชนกับกฎ Temporal Dead Zone ของ JavaScript (เรียกใช้ตัวแปร let/const
 // ก่อนถึงบรรทัดประกาศไม่ได้ จะเกิด "Cannot access ... before initialization" ทำให้สคริปต์พังทั้งไฟล์)
-if (SCRIPT_URL.indexOf('PASTE_YOUR') !== 0) { initialLoad_(); }
+//
+// หมายเหตุ: ต้องรอให้ DOM โหลดเสร็จก่อน (DOMContentLoaded) เพราะ initialLoad_() เรียก showPopup()
+// ซึ่งอ้างถึง #popupIcon ที่อยู่ท้ายไฟล์ ถ้าสคริปต์รันไปถึงบรรทัดนี้ก่อน browser พาร์ส div#popup
+// เสร็จ จะได้ null แล้ว error "Cannot set properties of null" ทันที
+if (SCRIPT_URL.indexOf('PASTE_YOUR') !== 0) {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initialLoad_);
+  } else {
+    initialLoad_();
+  }
+}
 </script>
 <div id="popup" class="popup-overlay" role="alertdialog" aria-live="assertive">
   <div class="popup-card">

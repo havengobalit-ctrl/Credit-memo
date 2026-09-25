@@ -102,8 +102,13 @@
   #dbTable td{padding:8px 6px;border-bottom:1px solid var(--line);font-size:13px;vertical-align:top;}
   #dbTable .db-actions{display:flex;gap:6px;flex-wrap:wrap;}
 
+  /* ---- Formatted print / PDF output (matches official Credit Memo document) ---- */
   #printSheet{display:none;}
   @media print{
+    /* สำคัญ: ห้ามใช้ position:absolute กับ #printSheet เพราะจะทำให้ตารางหลุดจาก
+       การไหลปกติของหน้าเอกสาร ผลคือ thead (ส่วนหัวที่ต้องพิมพ์ซ้ำ) จะไม่ตามไป
+       หน้า 2/3/4 — ให้ซ่อนส่วนอื่นด้วย display:none แล้วปล่อยให้ #printSheet
+       ไหลตามปกติแทน จึงจะเบรกหน้าและพิมพ์หัวตารางซ้ำได้ถูกต้อง */
     body > *:not(#printSheet){display:none !important;}
     body{margin:0;}
     #printSheet{
@@ -145,6 +150,12 @@
   #printSheet .p-page-table > thead{display:table-header-group;}
   #printSheet .p-page-table > tbody{display:table-row-group;}
   #printSheet thead{display:table-header-group;}
+  /* หมายเหตุ: ห้ามใส่ page-break-inside:avoid ให้ tbody tr แบบเหมาทุกแถว —
+     เมื่อใช้ร่วมกับ thead ที่พิมพ์ซ้ำทุกหน้า Chrome จะมีบั๊ก (crbug.com/24826: repeating
+     header forces a strut on the rows) ทำให้แถวที่อยู่ตรงรอยตัดหน้าโดน "ยืด" จนเกิดช่องว่าง
+     เปล่าๆ ขนาดใหญ่ และบางครั้งข้อมูลแถวเดิมถูกพิมพ์ซ้ำข้ามไปอีกหน้า (ข้อมูลซ้ำ 2 หน้า)
+     จึงปล่อยให้ทุกแถวตัดหน้าได้ตามปกติ ไม่บังคับ avoid เลย — แถวแต่ละอันสั้นแค่บรรทัดเดียวอยู่แล้ว
+     จึงไม่มีปัญหาเรื่องถูกตัดครึ่งกลางแถว */
   #printSheet .p-page-table > thead > tr > th.p-letterhead-cell{
     border:0;
     padding:0 0 10px 0;
@@ -208,6 +219,9 @@
     font-size:12px;
     margin-bottom:2px;
   }
+  /* ให้ส่วนท้าย (สรุปยอด/รายละเอียด) ดันไปชนขอบล่างสุดของหน้า: ทำให้ .p-print-page เป็น
+     flex column สูงเท่าพื้นที่ใช้งานจริงของกระดาษ (A4 ลบ margin บน-ล่าง 16mm) แล้วให้
+     .p-footer-push มี margin-top:auto ไปกินพื้นที่ว่างทั้งหมดที่เหลือ ดันตัวเองลงล่างสุด */
   #printSheet .p-print-page{
     display:flex;
     flex-direction:column;
@@ -258,6 +272,7 @@
 
 <div class="sheet" id="formView">
 
+  <!-- YELLOW: HEADER -->
   <section class="section yellow">
     <div class="tag"></div>
     <h1>Credit Memo</h1>
@@ -309,6 +324,7 @@
     </div>
   </section>
 
+  <!-- BLUE: CONTENT / LINE ITEMS -->
   <section class="section blue">
     <div class="tag"></div>
     <table id="itemsTable">
@@ -330,6 +346,7 @@
     <span id="itemsTotal" style="display:none;">0.00</span>
   </section>
 
+  <!-- GREEN: SUMMARY -->
   <section class="section green">
     <div class="tag"></div>
     <table id="summaryTable">
@@ -358,6 +375,8 @@ The above amount is calculated based on the actual amount paid after discount.</
       <span id="editingBadge" style="font-size:12.5px;color:var(--blue-border);align-self:center;display:none;"></span>
     </div>
   </section>
+
+  <!-- (list moved to dbView tab below) -->
 
 </div>
 
@@ -443,6 +462,8 @@ updateTotal();
 resetSummaryRows();
 document.querySelectorAll('textarea.desc, textarea.sum-desc').forEach(autoGrow);
 
+// ---- Shared backend (Google Apps Script Web App + Google Sheet) ----
+// วาง Web app URL จาก Apps Script ตรงนี้ (ดูวิธีทำใน apps_script_backend.gs)
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzekpl6Eg8ulCxJq-r2IjKcVPp09R4nepS7VsYV8uIQiyNhVi-S8eCcsaRPmgv13woaCw/exec';
 
 function showTab(name){
@@ -489,6 +510,7 @@ function collectData(){
 }
 function val(id){ return document.getElementById(id).value; }
 
+// ---- ตรวจเลขที่เอกสารซ้ำ / จัดรูปวันที่ ----
 function normNo(v){ return String(v||'').trim().toLowerCase(); }
 function normalizeDate(v){
   if (!v) return '';
@@ -513,6 +535,7 @@ function checkDupNow(){
     el.textContent = '⚠ เลขที่นี้ซ้ำกับรายการที่มีอยู่แล้ว ' + dups.length + ' รายการ';
   } else { el.style.display = 'none'; el.textContent = ''; }
 }
+// ---- ฐานข้อมูลลูกค้า (แท็บ "Data" ใน Google Sheet) : พิมพ์ชื่อบางส่วน > เลือก > เติม Tax ID / ที่อยู่ ----
 window._customers = [];
 window._suggIdx = -1;
 function normName(v){ return String(v||'').replace(/\s+/g,' ').trim().toLowerCase(); }
@@ -575,488 +598,4 @@ function showCustSuggest(matches){
     box.appendChild(d);
   });
   const inp = document.getElementById('custName');
-  box.style.top = (inp.offsetTop + inp.offsetHeight + 2) + 'px';
-  box.style.display = 'block';
-}
-function onCustNameInput(){
-  const hint = document.getElementById('custHint');
-  const key = normName(document.getElementById('custName').value);
-  const exact = key ? window._customers.find(x => normName(x.name) === key) : null;
-  if (exact){ pickCustomer(exact); return; }
-  hint.style.display = 'none';
-  hint.textContent = '';
-  const matches = key ? window._customers.filter(x => normName(x.name).indexOf(key) !== -1).slice(0, 8) : [];
-  showCustSuggest(matches);
-}
-(function(){
-  const inp = document.getElementById('custName');
-  inp.parentElement.style.position = 'relative';
-  inp.addEventListener('keydown', ev=>{
-    const items = document.querySelectorAll('#custSuggest .cust-item');
-    if (!items.length) return;
-    if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp'){
-      ev.preventDefault();
-      window._suggIdx = (window._suggIdx + (ev.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length;
-      items.forEach((it,i)=> it.classList.toggle('active', i === window._suggIdx));
-      items[window._suggIdx].scrollIntoView({block:'nearest'});
-    } else if (ev.key === 'Enter' && window._suggIdx >= 0){
-      ev.preventDefault();
-      items[window._suggIdx].dispatchEvent(new MouseEvent('mousedown'));
-    } else if (ev.key === 'Escape'){
-      hideCustSuggest();
-    }
-  });
-  inp.addEventListener('blur', ()=> setTimeout(hideCustSuggest, 150));
-})();
-
-async function refreshAll(){
-  const btn = document.getElementById('refreshAllBtn');
-  if (btn.disabled) return;
-  const originalHTML = btn.innerHTML;
-  btn.disabled = true;
-  btn.innerHTML = '<span class="mini-spinner"></span>กำลังรีเฟรช...';
-  showPopup('loading', 'กำลังรีเฟรชทั้งหมด...', 'ล้างแคชและโหลดข้อมูลใหม่');
-  try{
-    try{ await fetch(SCRIPT_URL + '?action=clearCache'); }catch(e){}
-    const [list] = await Promise.all([
-      fetchListSilently(),
-      loadCustomers()
-    ]);
-    if (Array.isArray(list)) renderList(list);
-    checkDupNow();
-    showPopup('success', 'รีเฟรชทั้งหมดแล้ว', '');
-  }catch(e){
-    showPopup('error', 'รีเฟรชไม่สำเร็จ', 'ตรวจสอบการเชื่อมต่ออินเทอร์เน็ต แล้วลองอีกครั้ง');
-  } finally {
-    btn.innerHTML = originalHTML;
-    setTimeout(()=>{ btn.disabled = false; }, 5000);
-  }
-}
-
-function getSessionId_(){
-  try{
-    var sid = sessionStorage.getItem('cmSessionId');
-    if (!sid){ sid = 's' + Date.now() + Math.random().toString(36).slice(2,8); sessionStorage.setItem('cmSessionId', sid); }
-    return sid;
-  }catch(e){ return 's' + Date.now() + Math.random().toString(36).slice(2,8); }
-}
-window._sessionId = getSessionId_();
-
-var PRESENCE_BUSY_THRESHOLD = 5;
-
-function updatePresenceUI_(count){
-  const dot = document.getElementById('presenceDot');
-  const text = document.getElementById('presenceText');
-  if (typeof count !== 'number'){
-    text.textContent = '—'; dot.textContent = '';
-    dot.classList.remove('online','busy');
-    dot.style.removeProperty('--pulse-duration');
-    return;
-  }
-  dot.textContent = count;
-  text.textContent = count <= 1 ? '' : '';
-  if (count > 0){
-    dot.classList.add('online');
-    dot.classList.toggle('busy', count >= PRESENCE_BUSY_THRESHOLD);
-    const duration = Math.max(0.4, 1.6 - (count - 1) * 0.15);
-    dot.style.setProperty('--pulse-duration', duration + 's');
-  } else {
-    dot.classList.remove('online','busy');
-    dot.style.removeProperty('--pulse-duration');
-  }
-}
-
-window._presenceReady = false;
-async function sendHeartbeat_(){
-  try{
-    const res = await fetch(SCRIPT_URL + '?action=heartbeat&cid=' + encodeURIComponent(getSessionId_()));
-    const data = await res.json();
-    const count = data && typeof data.count === 'number' ? data.count : undefined;
-    updatePresenceUI_(count);
-    if (!window._presenceReady && count !== undefined){
-      window._presenceReady = true;
-      hidePopup();
-    }
-  }catch(e){
-    if (!window._presenceReady){
-      showPopup('error', 'เชื่อมต่อสถานะผู้ใช้งานไม่สำเร็จ', 'ตรวจสอบการเชื่อมต่ออินเทอร์เน็ต แล้วรีเฟรชหน้าเว็บ');
-    }
-  }
-}
-function startPresenceHeartbeat_(){
-  showPopup('loading', 'กำลังเชื่อมต่อ...', 'ตรวจสอบสถานะผู้ใช้งานที่ออนไลน์อยู่');
-  sendHeartbeat_();
-  setInterval(function(){
-    if (document.visibilityState === 'visible') sendHeartbeat_();
-  }, 20000);
-  document.addEventListener('visibilitychange', function(){
-    if (document.visibilityState === 'visible') sendHeartbeat_();
-  });
-}
-
-async function fetchListSilently(){
-  try{
-    const res = await fetch(SCRIPT_URL);
-    const list = await res.json();
-    if (Array.isArray(list)) { window._memoCache = list; return list; }
-  }catch(e){}
-  return null;
-}
-
-let _popupTimer = null;
-function showPopup(state, msg, sub){
-  clearTimeout(_popupTimer);
-  const icon = document.getElementById('popupIcon');
-  if (state === 'loading') icon.innerHTML = '<div class="popup-spinner"></div>';
-  else if (state === 'success') icon.innerHTML = '<div class="popup-icon" style="color:var(--green-border);">✓</div>';
-  else icon.innerHTML = '<div class="popup-icon" style="color:#E5766B;">⚠</div>';
-  document.getElementById('popupMsg').textContent = msg || '';
-  document.getElementById('popupSub').textContent = sub || '';
-  document.getElementById('popupClose').style.display = (state === 'error') ? '' : 'none';
-  document.getElementById('popup').classList.add('show');
-  if (state === 'success') _popupTimer = setTimeout(hidePopup, 1400);
-}
-function hidePopup(){
-  clearTimeout(_popupTimer);
-  document.getElementById('popup').classList.remove('show');
-}
-async function postToBackend(body){
-  const res = await fetch(SCRIPT_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify(body)
-  });
-  let out = null;
-  try{ out = await res.json(); }catch(e){}
-  if (out && out.status === 'error') throw new Error(out.message || 'backend error');
-}
-
-async function saveMemo(){
-  const statusEl = document.getElementById('saveStatus');
-  statusEl.textContent = '';
-  showPopup('loading', 'กำลังบันทึก...', 'กรุณารอสักครู่');
-  try{
-    const data = collectData();
-    const isUpdate = !!window._currentId;
-    const fresh = await fetchListSilently();
-    const dups = findDuplicates(data.memoNo, fresh || window._memoCache);
-    if (dups.length){
-      const lines = dups.slice(0,3).map(d => '• ' + (d.memoNo||'-') + ' | ' + (d.custName||'-') + ' | ' + (normalizeDate(d.memoDate)||'-') + ' | ' + (d.itemsTotal||'0.00')).join('\n');
-      hidePopup();
-      const ok = confirm('⚠ เลขที่เอกสาร "' + data.memoNo + '" ซ้ำกับรายการที่มีอยู่แล้ว ' + dups.length + ' รายการ:\n' + lines + '\n\nต้องการบันทึกต่อหรือไม่?\n(กด Cancel เพื่อกลับไปแก้เลขที่)');
-      if (!ok){
-        statusEl.textContent = 'ยกเลิกการบันทึก — เลขที่เอกสารซ้ำ';
-        document.getElementById('memoNo').focus();
-        checkDupNow();
-        return;
-      }
-      showPopup('loading', 'กำลังบันทึก...', 'กรุณารอสักครู่');
-    }
-    data.id = isUpdate ? window._currentId : ('m' + Date.now());
-    data.savedAt = isUpdate ? (window._currentSavedAt || Date.now()) : Date.now();
-    await postToBackend({ type: isUpdate ? 'update' : 'save', data: data });
-    window._currentId = data.id;
-    window._currentSavedAt = data.savedAt;
-    setEditingBadge(data.memoNo);
-    showPopup('success', isUpdate ? 'อัปเดตแล้ว' : 'บันทึกแล้ว', data.memoNo || '');
-    refreshList();
-  }catch(e){
-    showPopup('error', 'บันทึกไม่สำเร็จ', 'ตรวจสอบ SCRIPT_URL / การเชื่อมต่ออินเทอร์เน็ต');
-  }
-}
-
-function newMemo(){
-  window._currentId = null;
-  window._currentSavedAt = null;
-  setEditingBadge(null);
-  document.querySelectorAll('#formView input, #formView textarea').forEach(el=>{
-    if (el.id === 'memoDate' || el.id === 'details' || el.classList.contains('sum-check') || el.classList.contains('sum-desc')) return;
-    el.value = '';
-  });
-  resetSummaryRows();
-  const tbody = document.getElementById('itemsBody');
-  tbody.innerHTML = '<tr><td><textarea class="desc" rows="1" oninput="autoGrow(this)"></textarea></td><td class="num"><input type="number" class="unitprice" step="0.01" oninput="syncAmount(this)"></td><td class="num"><input type="number" class="amount" step="0.01"></td><td class="row-actions"><button class="btn remove" onclick="removeRow(this)">ลบ</button></td></tr>';
-  updateTotal();
-  document.getElementById('saveStatus').textContent = 'เริ่มรายการใหม่แล้ว';
-  setTimeout(()=>{ document.getElementById('saveStatus').textContent=''; }, 2000);
-}
-
-function setEditingBadge(memoNo){
-  const el = document.getElementById('editingBadge');
-  if (memoNo){ el.style.display=''; el.textContent = `กำลังแก้ไข: ${memoNo} (บันทึกซ้ำจะทับของเดิม)`; }
-  else { el.style.display='none'; el.textContent=''; }
-}
-
-async function refreshList(withPopup){
-  const el = document.getElementById('memoList');
-  if (withPopup) showPopup('loading', 'กำลังโหลดข้อมูล...', 'กรุณารอสักครู่');
-  try{
-    const res = await fetch(SCRIPT_URL);
-    const list = await res.json();
-    if (!Array.isArray(list)) throw new Error((list && list.message) || 'invalid response');
-    renderList(list);
-    if (withPopup) hidePopup();
-  }catch(e){
-    el.innerHTML = '<tr><td colspan="6" style="color:var(--muted);font-size:13px;">โหลดรายการไม่สำเร็จ</td></tr>';
-    if (withPopup) showPopup('error', 'โหลดข้อมูลไม่สำเร็จ', 'ตรวจสอบการเชื่อมต่ออินเทอร์เน็ต แล้วกดรีเฟรชอีกครั้ง');
-  }
-}
-
-function renderList(list){
-  const el = document.getElementById('memoList');
-  el.innerHTML = '';
-  if (!list || !list.length){
-    el.innerHTML = '<tr><td colspan="6" style="color:var(--muted);font-size:13px;">ยังไม่มีรายการที่บันทึกไว้</td></tr>';
-    return;
-  }
-  const counts = {};
-  list.forEach(d=>{ const k = normNo(d.memoNo); if (k) counts[k] = (counts[k]||0) + 1; });
-  list.forEach(data=>{
-    const tr = document.createElement('tr');
-    const isDup = counts[normNo(data.memoNo)] > 1;
-    if (isDup) tr.className = 'dup-row';
-    const savedStr = data.savedAt ? new Date(data.savedAt).toLocaleString('th-TH') : '';
-    const updatedStr = data.updatedAt ? new Date(data.updatedAt).toLocaleString('th-TH') : '';
-    tr.innerHTML = `
-      <td>${escapeHtml(data.memoNo||'-')}${isDup ? '<span class="dup-badge">เลขที่ซ้ำ</span>' : ''}</td>
-      <td>${escapeHtml(normalizeDate(data.memoDate)||'-')}</td>
-      <td>${escapeHtml(data.custName||'-')}</td>
-      <td>${escapeHtml(data.itemsTotal||'0.00')}</td>
-      <td>${updatedStr ? 'แก้ไข '+updatedStr : 'บันทึก '+savedStr}</td>
-      <td class="db-actions">
-        <button class="btn" onclick='editFromDb(${JSON.stringify(data.id)})'>แก้ไข</button>
-        <button class="btn" onclick='copyMemo(${JSON.stringify(data.id)})'>คัดลอกไปทำต่อ</button>
-        <button class="btn remove" onclick='deleteMemo(${JSON.stringify(data.id)})'>ลบ</button>
-      </td>`;
-    el.appendChild(tr);
-  });
-  window._memoCache = list;
-  checkDupNow();
-}
-
-function editFromDb(id){
-  loadMemo(id);
-  showTab('form');
-  window.scrollTo({top:0, behavior:'smooth'});
-}
-
-function copyMemo(id){
-  const data = (window._memoCache || []).find(d=>d.id===id);
-  if (!data) return;
-  applyDataToForm(data);
-  window._currentId = null;
-  window._currentSavedAt = null;
-  setEditingBadge(null);
-  setVal('memoNo', (data.memoNo||'') + ' (สำเนา)');
-  document.getElementById('saveStatus').textContent = 'คัดลอกมาเป็นรายการใหม่แล้ว — แก้แล้วกด "บันทึกลงระบบ" เพื่อสร้างเป็นรายการแยก';
-  setTimeout(()=>{ document.getElementById('saveStatus').textContent=''; }, 4000);
-  showTab('form');
-  window.scrollTo({top:0, behavior:'smooth'});
-}
-
-function loadMemo(id){
-  const data = (window._memoCache || []).find(d=>d.id===id);
-  if (!data) return;
-  window._currentId = data.id;
-  window._currentSavedAt = data.savedAt;
-  setEditingBadge(data.memoNo);
-  applyDataToForm(data);
-}
-
-function applyDataToForm(data){
-  setVal('companyName', data.companyName); setVal('companyTax', data.companyTax); setVal('companyAddr', data.companyAddr);
-  setVal('memoNo', data.memoNo); setVal('memoDate', normalizeDate(data.memoDate));
-  setVal('custName', data.custName); setVal('custTax', data.custTax); setVal('custAddr', data.custAddr);
-  setVal('refInv', data.refInv); setVal('refItem', data.refItem);
-  setVal('details', data.details);
-  const tbody = document.getElementById('itemsBody');
-  tbody.innerHTML = '';
-  (data.items && data.items.length ? data.items : [{desc:'',unitPrice:'',amount:''}]).forEach(it=>{
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td><textarea class="desc" rows="1" oninput="autoGrow(this)">${escapeHtml(it.desc||'')}</textarea></td>
-      <td class="num"><input type="number" class="unitprice" step="0.01" value="${escapeAttr(it.unitPrice||'')}" oninput="syncAmount(this)"></td>
-      <td class="num"><input type="number" class="amount" step="0.01" value="${escapeAttr(it.amount||'')}" data-touched="1"></td>
-      <td class="row-actions"><button class="btn remove" onclick="removeRow(this)">ลบ</button></td>`;
-    tbody.appendChild(tr);
-  });
-  if (Array.isArray(data.summaryItems)){
-    document.getElementById('summaryBody').innerHTML = '';
-    data.summaryItems.filter(it => it.checked !== false)
-      .forEach(it => addSummaryRow(it.desc, it.unitPrice, it.amount));
-  } else {
-    resetSummaryRows();
-  }
-  updateTotal();
-  document.querySelectorAll('textarea.desc, textarea.sum-desc').forEach(autoGrow);
-  window.scrollTo({top:0, behavior:'smooth'});
-}
-
-async function deleteMemo(id){
-  if (!confirm('ลบรายการนี้ใช่ไหม?')) return;
-  if (window._currentId === id){ window._currentId = null; window._currentSavedAt = null; setEditingBadge(null); }
-  showPopup('loading', 'กำลังลบ...', 'กรุณารอสักครู่');
-  try{
-    await postToBackend({ type: 'delete', id: id });
-    showPopup('success', 'ลบแล้ว', '');
-  }catch(e){
-    showPopup('error', 'ลบไม่สำเร็จ', 'ตรวจสอบการเชื่อมต่ออินเทอร์เน็ต');
-  }
-  refreshList();
-}
-
-function setVal(id, v){ const el = document.getElementById(id); if (el) el.value = v || ''; }
-
-function fmt(n){
-  const num = parseFloat(n);
-  if (isNaN(num)) return '0.00';
-  return num.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
-}
-
-function nl2br(s){ return escapeHtml(s||'').replace(/\n/g, '<br>'); }
-
-function printMemo(){
-  const d = collectData();
-
-  const itemRowsData = (d.items||[]).filter(it=>it.desc || it.unitPrice || it.amount);
-  const itemRowHtmls = itemRowsData.length
-    ? itemRowsData.map(it=>`<tr><td>${nl2br(it.desc)}</td><td>${it.unitPrice?fmt(it.unitPrice):''}</td><td>${fmt(it.amount)}</td></tr>`)
-    : ['<tr><td colspan="3" style="text-align:center;color:#777;">-</td></tr>'];
-
-  const detailsHtml = (d.details && d.details.trim()) ? `
-    <div class="p-notes">${nl2br(d.details.trim())}</div>` : '';
-
-  const summaryItemsData = (d.summaryItems||[]).filter(it=>it.checked !== false);
-  const summaryHtml = summaryItemsData.length ? `
-    <div class="p-summary">
-      ${summaryItemsData.map(it=>`<div class="p-row"><span>${nl2br(it.desc)}</span><span>${fmt(it.amount)}</span></div>`).join('')}
-    </div>` : '';
-
-  const footerHtml = (summaryHtml || detailsHtml) ? `${summaryHtml}${detailsHtml}` : '';
-
-  const letterheadHtml = `
-    <div class="p-repeat-header">
-      <div class="p-repeat-title">Credit Memo</div>
-      <div class="p-repeat-company">
-        <div class="name">${escapeHtml(d.companyName||'')}</div>
-        <div>${escapeHtml(d.companyAddr||'')}</div>
-        <div>Tax ID : ${escapeHtml(d.companyTax||'')}</div>
-      </div>
-      <div class="p-repeat-toprow">
-        <div class="p-block">
-          <div class="label">Customer</div>
-          <div>${escapeHtml(d.custName||'')}</div>
-          <div>${escapeHtml(d.custAddr||'')}</div>
-          <div>Tax ID : ${escapeHtml(d.custTax||'')}</div>
-        </div>
-        <div class="p-meta">
-          <div><b>No :</b> ${escapeHtml(d.memoNo||'')}</div>
-          <div><b>Date :</b> ${escapeHtml(d.memoDate||'')}</div>
-        </div>
-      </div>
-      <div class="p-repeat-reference">
-        <div class="label">Reference</div>
-        <div>Ref. Invoice No : ${escapeHtml(d.refInv||'')}</div>
-        <div>Cancelled Item : ${escapeHtml(d.refItem||'')}</div>
-      </div>
-    </div>`;
-
-  const colHeadHtml = `<tr class="p-col-head"><th>DESCRIPTION</th><th>UNIT PRICE</th><th>AMOUNT</th></tr>`;
-
-  const contentBlocks = itemRowHtmls;
-
-  const sheet = document.getElementById('printSheet');
-
-  sheet.innerHTML = '';
-  sheet.style.cssText = 'display:block;position:fixed;left:-99999px;top:0;visibility:hidden;width:190mm;';
-
-  const MM_TO_PX = 96/25.4;
-  const PAGE_HEIGHT_MM = 297 - 16 - 16;
-  const SAFETY = 0.94;
-  const pageHeightPx = PAGE_HEIGHT_MM * MM_TO_PX * SAFETY;
-
-  function measurePlainHeight(html){
-    const div = document.createElement('div');
-    div.innerHTML = html;
-    sheet.appendChild(div);
-    const h = div.getBoundingClientRect().height;
-    sheet.removeChild(div);
-    return h;
-  }
-  const letterheadH = measurePlainHeight(letterheadHtml);
-  const footerH = footerHtml ? measurePlainHeight(footerHtml) : 0;
-
-  function measureRowHeight(trHtml){
-    const t = document.createElement('table');
-    t.className = 'p-page-table';
-    t.innerHTML = `<tbody>${trHtml}</tbody>`;
-    sheet.appendChild(t);
-    const h = t.getBoundingClientRect().height;
-    sheet.removeChild(t);
-    return h;
-  }
-  const colHeadH = measureRowHeight(colHeadHtml);
-  const blockHeights = contentBlocks.map(measureRowHeight);
-
-  const pages = [];
-  let current = [];
-  let usedH = letterheadH + colHeadH;
-
-  contentBlocks.forEach((html, i)=>{
-    const h = blockHeights[i];
-    if (current.length && usedH + h > pageHeightPx){
-      pages.push(current);
-      current = [];
-      usedH = letterheadH + colHeadH;
-    }
-    current.push(html);
-    usedH += h;
-  });
-  pages.push(current);
-  const usedHLastPage = usedH;
-
-  let footerPageIndex = -1;
-  if (footerHtml){
-    const remainingOnLastPage = pageHeightPx - usedHLastPage;
-    if (footerH <= remainingOnLastPage){
-      footerPageIndex = pages.length - 1;
-    } else {
-      pages.push([]);
-      footerPageIndex = pages.length - 1;
-    }
-  }
-
-  const pagesHtml = pages.map((rows, idx)=>{
-    const isLast = idx === pages.length - 1;
-    const hasFooterHere = idx === footerPageIndex;
-    const itemsTableHtml = rows.length ? `
-      <table class="p-page-table">
-        <thead>${colHeadHtml}</thead>
-        <tbody>${rows.join('')}</tbody>
-      </table>` : '';
-    return `
-    <div class="p-print-page"${!isLast ? ' style="page-break-after:always;"' : ''}>
-      ${letterheadHtml}
-      ${itemsTableHtml}
-      ${hasFooterHere ? `<div class="p-footer-push">${footerHtml}</div>` : ''}
-    </div>`;
-  }).join('');
-
-  sheet.style.cssText = '';
-  sheet.innerHTML = pagesHtml;
-  window.print();
-}
-window.addEventListener('afterprint', ()=>{ document.getElementById('printSheet').innerHTML = ''; });
-function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-function escapeAttr(s){ return escapeHtml(s); }
-</script>
-<div id="popup" class="popup-overlay" role="alertdialog" aria-live="assertive">
-  <div class="popup-card">
-    <div id="popupIcon"></div>
-    <div id="popupMsg" class="popup-msg"></div>
-    <div id="popupSub" class="popup-sub"></div>
-    <button id="popupClose" class="btn popup-close" style="display:none;" onclick="hidePopup()">ปิด</button>
-  </div>
-</div>
-</body>
-</html>
+  box.st

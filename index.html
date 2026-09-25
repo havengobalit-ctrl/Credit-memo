@@ -248,8 +248,10 @@
   .presence-badge{display:flex;align-items:center;gap:6px;align-self:center;margin-left:auto;font-size:12.5px;color:var(--muted);}
   .presence-icon{position:relative;font-size:17px;line-height:1;}
   .presence-dot{position:absolute;right:-7px;bottom:-5px;min-width:15px;height:15px;padding:0 2px;border-radius:8px;background:#9aa1ab;border:2px solid var(--paper);color:#fff;font-size:9.5px;font-weight:700;line-height:11px;text-align:center;display:flex;align-items:center;justify-content:center;}
-  .presence-dot.online{background:#3FA65E;animation:presencepulse 1.6s ease-in-out infinite;}
-  @keyframes presencepulse{0%,100%{box-shadow:0 0 0 0 rgba(63,166,94,.55);}50%{box-shadow:0 0 0 4px rgba(63,166,94,0);}}
+  .presence-dot.online{background:#3FA65E;animation:presencepulseGreen var(--pulse-duration,1.6s) ease-in-out infinite;}
+  .presence-dot.online.busy{background:#C0554A;animation:presencepulseRed var(--pulse-duration,1.6s) ease-in-out infinite;}
+  @keyframes presencepulseGreen{0%,100%{box-shadow:0 0 0 0 rgba(63,166,94,.55);}50%{box-shadow:0 0 0 4px rgba(63,166,94,0);}}
+  @keyframes presencepulseRed{0%,100%{box-shadow:0 0 0 0 rgba(192,85,74,.55);}50%{box-shadow:0 0 0 4px rgba(192,85,74,0);}}
 </style>
 </head>
 <body>
@@ -666,13 +668,30 @@ function getSessionId_(){
 }
 window._sessionId = getSessionId_();
 
+// จำนวนคนที่ถือว่า "เยอะ" แล้วให้จุดเปลี่ยนเป็นสีแดง (ปรับตัวเลขนี้ได้ตามต้องการ)
+var PRESENCE_BUSY_THRESHOLD = 5;
+
 function updatePresenceUI_(count){
   const dot = document.getElementById('presenceDot');
   const text = document.getElementById('presenceText');
-  if (typeof count !== 'number'){ text.textContent = '—'; dot.textContent = ''; dot.classList.remove('online'); return; }
+  if (typeof count !== 'number'){
+    text.textContent = '—'; dot.textContent = '';
+    dot.classList.remove('online','busy');
+    dot.style.removeProperty('--pulse-duration');
+    return;
+  }
   dot.textContent = count;
   text.textContent = count <= 1 ? 'ออนไลน์แค่คุณ' : count + ' คนออนไลน์';
-  if (count > 1) dot.classList.add('online'); else dot.classList.remove('online');
+  if (count > 0){
+    dot.classList.add('online');
+    dot.classList.toggle('busy', count >= PRESENCE_BUSY_THRESHOLD);
+    // ยิ่งคนเยอะ ยิ่งกระพริบถี่ขึ้น — เริ่มที่ 1.6 วิ/รอบตอนมี 1 คน ลดลงเรื่อยๆ แต่ไม่เร็วกว่า 0.4 วิ/รอบ
+    const duration = Math.max(0.4, 1.6 - (count - 1) * 0.15);
+    dot.style.setProperty('--pulse-duration', duration + 's');
+  } else {
+    dot.classList.remove('online','busy');
+    dot.style.removeProperty('--pulse-duration');
+  }
 }
 
 async function sendHeartbeat_(){

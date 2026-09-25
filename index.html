@@ -311,12 +311,12 @@
       </div>
       <div class="field">
         <label>เลขที่เอกสาร (No.)</label>
-        <input id="memoNo" value="CM2609002" oninput="checkDupNow()">
+        <input id="memoNo" value="" oninput="onMemoNoManualEdit()">
         <div id="dupWarn" style="display:none;margin-top:4px;font-size:12.5px;color:#E5766B;"></div>
       </div>
       <div class="field">
         <label>วันที่ (Date)</label>
-        <input id="memoDate" type="date" value="2026-09-09">
+        <input id="memoDate" type="date" value="2026-09-09" onchange="onMemoDateChange()">
       </div>
       <div class="field">
         <label>ลูกค้า (Customer)</label>
@@ -441,6 +441,7 @@ The above amount is calculated based on the actual amount paid after discount.</
         <label>ต้องชำระเพิ่ม</label>
         <input id="additionalDue" type="number" step="0.01" placeholder="0.00">
       </div>
+      <div id="balanceHint" style="display:none;font-size:11.5px;color:var(--green-border);"></div>
     </div>
   </aside>
 
@@ -586,12 +587,56 @@ function findDuplicates(memoNo, list){
 }
 function checkDupNow(){
   const el = document.getElementById('dupWarn');
+  const saveBtn = document.getElementById('saveBtn');
   if (!el) return;
   const dups = findDuplicates(document.getElementById('memoNo').value, window._memoCache);
   if (dups.length){
     el.style.display = '';
-    el.textContent = '⚠ เลขที่นี้ซ้ำกับรายการที่มีอยู่แล้ว ' + dups.length + ' รายการ';
-  } else { el.style.display = 'none'; el.textContent = ''; }
+    el.textContent = '⛔ เลขที่นี้ซ้ำกับรายการที่มีอยู่แล้ว ' + dups.length + ' รายการ — ต้องแก้เลขที่ก่อนจึงจะบันทึกได้';
+    if (saveBtn) saveBtn.disabled = true;
+  } else {
+    el.style.display = 'none'; el.textContent = '';
+    if (saveBtn) saveBtn.disabled = false;
+  }
+}
+
+// ---- เลขที่เอกสารอัตโนมัติ รูปแบบ CM + ปี(2หลัก) + เดือน(2หลัก) + ลำดับ(3หลัก) เช่น CM2609001 ----
+// อิงจากวันที่ในฟอร์ม (ช่อง วันที่) หาเลขลำดับถัดไปของเดือนนั้นจากรายการที่มีอยู่ในฐานข้อมูล
+// จะเติมให้อัตโนมัติตอนเปิดหน้าเว็บครั้งแรก และตอนกด "เริ่มรายการใหม่" หรือเปลี่ยนวันที่
+// (จะไม่เขียนทับถ้าผู้ใช้เคยพิมพ์แก้เลขที่เองแล้ว จนกว่าจะกด "เริ่มรายการใหม่" อีกครั้ง)
+window._memoNoAuto = true;
+
+function computeNextMemoNo(dateStr){
+  let d = dateStr ? new Date(dateStr) : new Date();
+  if (isNaN(d)) d = new Date();
+  const yy = String(d.getFullYear()).slice(-2);
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const prefix = 'CM' + yy + mm;
+  const re = new RegExp('^' + prefix + '(\\d{3})$', 'i');
+  let maxSeq = 0;
+  (window._memoCache || []).forEach(item=>{
+    const m = String(item.memoNo || '').trim().match(re);
+    if (m){
+      const n = parseInt(m[1], 10);
+      if (n > maxSeq) maxSeq = n;
+    }
+  });
+  return prefix + String(maxSeq + 1).padStart(3, '0');
+}
+
+function applyAutoMemoNo(){
+  if (!window._memoNoAuto) return;
+  setVal('memoNo', computeNextMemoNo(val('memoDate')));
+  checkDupNow();
+}
+
+function onMemoNoManualEdit(){
+  window._memoNoAuto = false; // ผู้ใช้แก้เลขเอง เลิกเติมให้อัตโนมัติจนกว่าจะเริ่มรายการใหม่
+  checkDupNow();
+}
+
+function onMemoDateChange(){
+  if (window._memoNoAuto) applyAutoMemoNo();
 }
 window._customers = [];
 window._suggIdx = -1;
@@ -685,6 +730,33 @@ function pickCustomer(c){
   const hint = document.getElementById('custHint');
   hint.style.display = '';
   hint.textContent = '✓ เติมเลขผู้เสียภาษีและที่อยู่จากฐานข้อมูลลูกค้าแล้ว';
+  applyLatestBalanceForCustomer(c.name);
+}
+
+// ---- ดึงยอดคงค้าง / ต้องชำระเพิ่ม จากเอกสารล่าสุดของลูกค้ารายนั้น มาโชว์ในช่อง "ติดตามยอด" ----
+// ทำงานตอนเลือกชื่อลูกค้า (จากรายการแนะนำ หรือพิมพ์ตรงชื่อเป๊ะ) เฉพาะตอนเริ่มรายการใหม่เท่านั้น
+// (ไม่ทับข้อมูลตอนกำลังแก้ไขเอกสารเดิม เพราะช่องนั้นถูกโหลดมาจากเอกสารนั้นอยู่แล้ว)
+function findLatestMemoForCustomer(custName){
+  const key = normName(custName);
+  if (!key) return null;
+  const list = (window._memoCache || []).filter(m => normName(m.custName) === key);
+  if (!list.length) return null;
+  return list.slice().sort((a,b)=> Number(b.savedAt) - Number(a.savedAt))[0];
+}
+function applyLatestBalanceForCustomer(custName){
+  const hint = document.getElementById('balanceHint');
+  if (window._currentId){ return; } // กำลังแก้ไขเอกสารเดิมอยู่ ไม่ต้องไปทับ
+  const latest = findLatestMemoForCustomer(custName);
+  if (!latest){
+    if (hint){ hint.style.display = 'none'; hint.textContent = ''; }
+    return;
+  }
+  setVal('outstanding', latest.outstanding);
+  setVal('additionalDue', latest.additionalDue);
+  if (hint){
+    hint.style.display = '';
+    hint.textContent = '✓ ดึงยอดจากเอกสารล่าสุด ' + (latest.memoNo || '-') + ' (' + (normalizeDate(latest.memoDate) || '-') + ')';
+  }
 }
 function showCustSuggest(matches){
   const box = document.getElementById('custSuggest');
@@ -748,6 +820,7 @@ async function refreshAll(){
     ]);
     if (Array.isArray(list)) renderList(list);
     checkDupNow();
+    if (window._memoNoAuto) applyAutoMemoNo();
     showPopup('success', 'รีเฟรชทั้งหมดแล้ว', '');
   }catch(e){
     showPopup('error', 'รีเฟรชไม่สำเร็จ', 'ตรวจสอบการเชื่อมต่ออินเทอร์เน็ต แล้วลองอีกครั้ง');
@@ -810,6 +883,7 @@ async function initialLoad_(){
     loadCustomers(),
     sendHeartbeat_()
   ]);
+  if (!val('memoNo')) applyAutoMemoNo();
   hidePopup();
   setInterval(function(){
     if (document.visibilityState === 'visible') sendHeartbeat_();
@@ -866,16 +940,12 @@ async function saveMemo(){
     const fresh = await fetchListSilently();
     const dups = findDuplicates(data.memoNo, fresh || window._memoCache);
     if (dups.length){
-      const lines = dups.slice(0,3).map(d => '• ' + (d.memoNo||'-') + ' | ' + (d.custName||'-') + ' | ' + (normalizeDate(d.memoDate)||'-') + ' | ' + (d.itemsTotal||'0.00')).join('\n');
-      hidePopup();
-      const ok = confirm('⚠ เลขที่เอกสาร "' + data.memoNo + '" ซ้ำกับรายการที่มีอยู่แล้ว ' + dups.length + ' รายการ:\n' + lines + '\n\nต้องการบันทึกต่อหรือไม่?\n(กด Cancel เพื่อกลับไปแก้เลขที่)');
-      if (!ok){
-        statusEl.textContent = 'ยกเลิกการบันทึก — เลขที่เอกสารซ้ำ';
-        document.getElementById('memoNo').focus();
-        checkDupNow();
-        return;
-      }
-      showPopup('loading', 'กำลังบันทึก...', 'กรุณารอสักครู่');
+      const lines = dups.slice(0,3).map(d => (d.memoNo||'-') + ' (' + (d.custName||'-') + ')').join(', ');
+      showPopup('error', 'บันทึกไม่ได้ — เลขที่เอกสารซ้ำ', 'เลขที่ "' + data.memoNo + '" ซ้ำกับ ' + dups.length + ' รายการ: ' + lines + ' — กรุณาแก้เลขที่ก่อน');
+      statusEl.textContent = 'บันทึกไม่ได้ — เลขที่เอกสารซ้ำ';
+      document.getElementById('memoNo').focus();
+      checkDupNow();
+      return;
     }
     data.id = isUpdate ? window._currentId : ('m' + Date.now());
     data.savedAt = isUpdate ? (window._currentSavedAt || Date.now()) : Date.now();
@@ -901,11 +971,17 @@ function newMemo(){
   resetSummaryRows();
   setVal('outstanding', '');
   setVal('additionalDue', '');
+  const balHint = document.getElementById('balanceHint');
+  if (balHint){ balHint.style.display = 'none'; balHint.textContent = ''; }
+  const custHint = document.getElementById('custHint');
+  if (custHint){ custHint.style.display = 'none'; custHint.textContent = ''; }
   const tbody = document.getElementById('itemsBody');
   tbody.innerHTML = '<tr><td><textarea class="desc" rows="1" oninput="autoGrow(this)"></textarea></td><td class="num"><input type="number" class="unitprice" step="0.01" oninput="syncAmount(this)"></td><td class="num"><input type="number" class="amount" step="0.01"></td><td class="row-actions"><button class="btn remove" onclick="removeRow(this)">ลบ</button></td></tr>';
   updateTotal();
   document.getElementById('saveStatus').textContent = 'เริ่มรายการใหม่แล้ว';
   setTimeout(()=>{ document.getElementById('saveStatus').textContent=''; }, 2000);
+  window._memoNoAuto = true;
+  applyAutoMemoNo();
 }
 
 function setEditingBadge(memoNo){
@@ -1020,14 +1096,16 @@ function renderSummary(list){
 
     const bodyId = 'sumBody_' + idx;
     const hasBalance = s.weight > 0;
+    const latest = s.memos[0]; // memos เรียงจากล่าสุดไปเก่าสุดแล้ว (ตาม savedAt)
 
     const card = document.createElement('div');
     card.className = 'summary-company-card' + (hasBalance ? ' summary-has-balance' : '');
     card.innerHTML = `
       <div class="summary-company-header" onclick="toggleSummaryCard('${bodyId}')">
         <div class="summary-company-name">${escapeHtml(s.name)}</div>
-        <div style="display:flex;align-items:center;gap:10px;">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
           <span class="summary-company-quick">คงค้าง ${fmt(s.subOutstanding)} &nbsp;|&nbsp; ต้องชำระเพิ่ม ${fmt(s.subDue)}</span>
+          ${latest ? `<button class="btn" onclick='event.stopPropagation();copyMemo(${JSON.stringify(latest.id)})' title="คัดลอกเอกสารล่าสุด (${escapeAttr(latest.memoNo||'')}) ไปทำต่อ">คัดลอกล่าสุดไปทำต่อ</button>` : ''}
           <span class="summary-toggle-icon" id="${bodyId}_icon">▾</span>
         </div>
       </div>
@@ -1072,10 +1150,12 @@ function copyMemo(id){
   applyDataToForm(data);
   window._currentId = null;
   window._currentSavedAt = null;
+  window._memoNoAuto = false; // ใช้เลขที่คัดลอกมา (มี "(สำเนา)" ต่อท้าย) ไม่ต้องเติมอัตโนมัติทับ
   setEditingBadge(null);
   setVal('memoNo', (data.memoNo||'') + ' (สำเนา)');
   document.getElementById('saveStatus').textContent = 'คัดลอกมาเป็นรายการใหม่แล้ว — แก้แล้วกด "บันทึกลงระบบ" เพื่อสร้างเป็นรายการแยก';
   setTimeout(()=>{ document.getElementById('saveStatus').textContent=''; }, 4000);
+  checkDupNow();
   showTab('form');
   window.scrollTo({top:0, behavior:'smooth'});
 }
@@ -1085,6 +1165,7 @@ function loadMemo(id){
   if (!data) return;
   window._currentId = data.id;
   window._currentSavedAt = data.savedAt;
+  window._memoNoAuto = false; // กำลังแก้ไขเอกสารเดิม ไม่ต้องเติมเลขที่อัตโนมัติทับ
   setEditingBadge(data.memoNo);
   applyDataToForm(data);
 }
@@ -1117,6 +1198,7 @@ function applyDataToForm(data){
   }
   updateTotal();
   document.querySelectorAll('textarea.desc, textarea.sum-desc').forEach(autoGrow);
+  checkDupNow();
   window.scrollTo({top:0, behavior:'smooth'});
 }
 

@@ -261,6 +261,14 @@
   .summary-company-table td{padding:5px 6px;font-size:13.5px;border-bottom:1px dashed var(--line);}
   .summary-company-table .num-cell{text-align:right;white-space:nowrap;}
   .summary-company-table tfoot td{border-bottom:none;border-top:1.5px solid var(--line);font-weight:700;padding-top:8px;}
+  .summary-company-header{cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;user-select:none;}
+  .summary-company-header:hover .summary-company-name{color:var(--blue-border);}
+  .summary-company-quick{font-size:12.5px;color:var(--muted);white-space:nowrap;}
+  .summary-toggle-icon{font-size:12px;color:var(--muted);transition:transform .15s ease;display:inline-block;flex:none;}
+  .summary-toggle-icon.collapsed{transform:rotate(-90deg);}
+  .summary-company-body{overflow:hidden;margin-top:8px;}
+  .summary-company-body.collapsed{display:none;}
+  .summary-has-balance .summary-company-name{color:var(--blue-border);}
 </style>
 </head>
 <body>
@@ -412,6 +420,8 @@ The above amount is calculated based on the actual amount paid after discount.</
     <div class="tag"></div>
     <div class="toolbar" style="margin-top:0;margin-bottom:10px;">
       <button class="btn" onclick="refreshSummary(true)">รีเฟรช</button>
+      <button class="btn ghost" onclick="expandAllSummary()">ขยายทั้งหมด</button>
+      <button class="btn ghost" onclick="collapseAllSummary()">ย่อทั้งหมด</button>
     </div>
     <div id="summaryTotalsBar" style="margin-bottom:14px;font-size:14px;color:var(--muted);"></div>
     <div id="summaryGroups"></div>
@@ -586,17 +596,37 @@ function checkDupNow(){
 window._customers = [];
 window._suggIdx = -1;
 function normName(v){ return String(v||'').replace(/\s+/g,' ').trim().toLowerCase(); }
+
+// ---- โหลดฐานข้อมูลลูกค้า พร้อม retry อัตโนมัติจนกว่าจะสำเร็จ ----
+// ถ้าเชื่อมต่อ Apps Script ไม่ได้ (เช่น เน็ตหลุดชั่วคราว, สคริปต์ยังตื่นช้า) จะลองใหม่ให้เอง
+// เป็นระยะ (หน่วงเวลาเพิ่มขึ้นทีละนิดจนกว่าจะสำเร็จ สูงสุด 30 วิ/ครั้ง) โดยไม่ต้องให้ผู้ใช้กดรีเฟรชเอง
+// และจะหยุดลองชั่วคราวถ้าผู้ใช้สลับไปแท็บอื่น แล้วลองต่อทันทีเมื่อกลับมาเปิดแท็บนี้อีกครั้ง
+window._custRetryAttempt = 0;
+window._custRetryTimer = null;
+window._custRetryVisHandler = null;
+
 async function loadCustomers(){
+  clearTimeout(window._custRetryTimer);
+  if (window._custRetryVisHandler){
+    document.removeEventListener('visibilitychange', window._custRetryVisHandler);
+    window._custRetryVisHandler = null;
+  }
+
   const st = document.getElementById('custDbStatus');
   st.style.color = 'var(--muted)';
-  st.innerHTML = '<span class="mini-spinner"></span>กำลังโหลดฐานข้อมูลลูกค้า...';
+  st.innerHTML = '<span class="mini-spinner"></span>กำลังโหลดฐานข้อมูลลูกค้า' +
+    (window._custRetryAttempt > 0 ? ' (ลองครั้งที่ ' + (window._custRetryAttempt + 1) + ')' : '') + '...';
+
   let reason = '';
+  let ok = false;
   try{
     const res = await fetch(SCRIPT_URL + '?action=customers');
     const list = await res.json();
     if (Array.isArray(list)){
       window._customers = list.filter(c => c && c.name);
-      if (!window._customers.length){
+      if (window._customers.length){
+        ok = true;
+      } else {
         reason = list.length
           ? 'Apps Script ที่ Deploy อยู่ยังเป็นโค้ดเวอร์ชันเก่า (ยังไม่มีส่วนดึงรายชื่อลูกค้า) — ให้ Deploy เป็น New version'
           : 'ไม่พบข้อมูลในแท็บ "Data" (ตรวจชื่อแท็บ และว่าสคริปต์ผูกกับชีตนี้)';
@@ -609,13 +639,37 @@ async function loadCustomers(){
     window._customers = [];
     reason = 'เชื่อมต่อ Apps Script ไม่ได้';
   }
-  if (window._customers.length){
+
+  if (ok){
+    window._custRetryAttempt = 0;
     st.style.color = 'var(--muted)';
     st.textContent = 'ฐานข้อมูลลูกค้า ' + window._customers.length + ' ราย — พิมพ์ชื่อบางส่วนแล้วเลือกจากรายการ';
-  } else {
-    st.style.color = '#E5766B';
-    st.textContent = '⚠ โหลดฐานข้อมูลลูกค้าไม่ได้: ' + reason;
+    return;
   }
+
+  window._custRetryAttempt++;
+  const delaySec = Math.min(30, 2 * window._custRetryAttempt); // หน่วงเพิ่มทีละ 2 วิ สูงสุด 30 วิ
+  st.style.color = '#E5766B';
+  st.textContent = '⚠ โหลดฐานข้อมูลลูกค้าไม่ได้: ' + reason + ' — กำลังลองใหม่อัตโนมัติใน ' + delaySec + ' วิ';
+
+  const scheduleRetry = () => {
+    window._custRetryTimer = setTimeout(() => {
+      if (document.visibilityState === 'visible'){
+        loadCustomers();
+      } else {
+        // แท็บไม่ได้เปิดอยู่ตอนนี้ — รอจนกว่าจะกลับมาเปิดแท็บแล้วค่อยลองใหม่ทันที
+        window._custRetryVisHandler = function(){
+          if (document.visibilityState === 'visible'){
+            document.removeEventListener('visibilitychange', window._custRetryVisHandler);
+            window._custRetryVisHandler = null;
+            loadCustomers();
+          }
+        };
+        document.addEventListener('visibilitychange', window._custRetryVisHandler);
+      }
+    }, delaySec * 1000);
+  };
+  scheduleRetry();
 }
 function hideCustSuggest(){
   const box = document.getElementById('custSuggest');
@@ -933,33 +987,77 @@ function renderSummary(list){
     if (!groups[key]) groups[key] = [];
     groups[key].push(d);
   });
-  const names = Object.keys(groups).sort((a,b)=> a.localeCompare(b, 'th'));
-  let grandOutstanding = 0, grandDue = 0;
 
-  names.forEach(name=>{
+  // รวบรวมยอดของแต่ละบริษัทก่อน เพื่อใช้จัดเรียง — บริษัทที่ยังมียอดคงค้าง/ต้องชำระเพิ่ม ให้ขึ้นก่อน
+  // เรียงจากยอดรวม (ค่าสัมบูรณ์ของคงค้าง+ต้องชำระเพิ่ม) มากไปน้อย ส่วนบริษัทที่ยอด 0 ให้เรียงตามชื่อไว้ท้ายสุด
+  const names = Object.keys(groups);
+  const summaries = names.map(name=>{
     const memos = groups[name].slice().sort((a,b)=> Number(b.savedAt) - Number(a.savedAt));
     let subOutstanding = 0, subDue = 0;
-    const rows = memos.map(m=>{
+    memos.forEach(m=>{
+      subOutstanding += parseFloat(m.outstanding) || 0;
+      subDue += parseFloat(m.additionalDue) || 0;
+    });
+    return { name, memos, subOutstanding, subDue, weight: Math.abs(subOutstanding) + Math.abs(subDue) };
+  });
+
+  summaries.sort((a,b)=>{
+    const aHas = a.weight > 0, bHas = b.weight > 0;
+    if (aHas !== bHas) return aHas ? -1 : 1;
+    if (aHas && bHas) return b.weight - a.weight;
+    return a.name.localeCompare(b.name, 'th');
+  });
+
+  let grandOutstanding = 0, grandDue = 0;
+
+  summaries.forEach((s, idx)=>{
+    grandOutstanding += s.subOutstanding; grandDue += s.subDue;
+    const rows = s.memos.map(m=>{
       const out = parseFloat(m.outstanding) || 0;
       const due = parseFloat(m.additionalDue) || 0;
-      subOutstanding += out; subDue += due;
       return `<tr><td>${escapeHtml(m.memoNo||'-')}</td><td class="num-cell">${fmt(out)}</td><td class="num-cell">${fmt(due)}</td></tr>`;
     }).join('');
-    grandOutstanding += subOutstanding; grandDue += subDue;
+
+    const bodyId = 'sumBody_' + idx;
+    const hasBalance = s.weight > 0;
 
     const card = document.createElement('div');
-    card.className = 'summary-company-card';
+    card.className = 'summary-company-card' + (hasBalance ? ' summary-has-balance' : '');
     card.innerHTML = `
-      <div class="summary-company-name">${escapeHtml(name)}</div>
-      <table class="summary-company-table">
-        <thead><tr><th>เลขที่เอกสาร</th><th>ยอดคงค้าง</th><th>ต้องชำระเพิ่ม</th></tr></thead>
-        <tbody>${rows}</tbody>
-        <tfoot><tr><td>รวม</td><td class="num-cell">${fmt(subOutstanding)}</td><td class="num-cell">${fmt(subDue)}</td></tr></tfoot>
-      </table>`;
+      <div class="summary-company-header" onclick="toggleSummaryCard('${bodyId}')">
+        <div class="summary-company-name">${escapeHtml(s.name)}</div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span class="summary-company-quick">คงค้าง ${fmt(s.subOutstanding)} &nbsp;|&nbsp; ต้องชำระเพิ่ม ${fmt(s.subDue)}</span>
+          <span class="summary-toggle-icon" id="${bodyId}_icon">▾</span>
+        </div>
+      </div>
+      <div class="summary-company-body" id="${bodyId}">
+        <table class="summary-company-table">
+          <thead><tr><th>เลขที่เอกสาร</th><th>ยอดคงค้าง</th><th>ต้องชำระเพิ่ม</th></tr></thead>
+          <tbody>${rows}</tbody>
+          <tfoot><tr><td>รวม</td><td class="num-cell">${fmt(s.subOutstanding)}</td><td class="num-cell">${fmt(s.subDue)}</td></tr></tfoot>
+        </table>
+      </div>`;
     groupsEl.appendChild(card);
   });
 
   totalsBar.innerHTML = `รวมทั้งหมดทุกบริษัท &nbsp;|&nbsp; ยอดคงค้าง: <b>${fmt(grandOutstanding)}</b> &nbsp;|&nbsp; ต้องชำระเพิ่ม: <b>${fmt(grandDue)}</b>`;
+}
+
+function toggleSummaryCard(bodyId){
+  const body = document.getElementById(bodyId);
+  const icon = document.getElementById(bodyId + '_icon');
+  if (!body) return;
+  const collapsed = body.classList.toggle('collapsed');
+  if (icon) icon.classList.toggle('collapsed', collapsed);
+}
+function expandAllSummary(){
+  document.querySelectorAll('.summary-company-body').forEach(el => el.classList.remove('collapsed'));
+  document.querySelectorAll('.summary-toggle-icon').forEach(el => el.classList.remove('collapsed'));
+}
+function collapseAllSummary(){
+  document.querySelectorAll('.summary-company-body').forEach(el => el.classList.add('collapsed'));
+  document.querySelectorAll('.summary-toggle-icon').forEach(el => el.classList.add('collapsed'));
 }
 
 function editFromDb(id){

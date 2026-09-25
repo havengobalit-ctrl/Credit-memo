@@ -678,7 +678,7 @@ function updatePresenceUI_(count){
 async function sendHeartbeat_(){
   // เงียบไว้ถ้าเช็กไม่สำเร็จ ไม่รบกวนผู้ใช้ด้วย popup — เป็นแค่ตัวบอกสถานะเสริม
   try{
-    const res = await fetch(SCRIPT_URL + '?action=heartbeat&sid=' + encodeURIComponent(window._sessionId));
+    const res = await fetch(SCRIPT_URL + '?action=heartbeat&sid=' + encodeURIComponent(getSessionId_()));
     const data = await res.json();
     updatePresenceUI_(data && typeof data.count === 'number' ? data.count : undefined);
   }catch(e){ /* ไม่ต้องทำอะไร รอบถัดไปลองใหม่ */ }

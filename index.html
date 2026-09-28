@@ -1,9 +1,13 @@
 <!DOCTYPE html>
-<html lang="th">
+<html lang="th" data-theme="light">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Credit Memo</title>
+<meta name="theme-color" content="#F3F5F9">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
     --yellow-bg:#FFF7D6; --yellow-border:#E8C547;
@@ -270,23 +274,291 @@
   .summary-company-body.collapsed{display:none;}
   .summary-has-balance .summary-company-name{color:var(--blue-border);}
 </style>
+<style id="ecount-theme">
+/* ============================================================
+   ECOUNT-inspired theme — ปรับหน้าตาเท่านั้น (ไม่แตะ JS / id / โครงสร้างข้อมูล / backend)
+   ครอบด้วย @media screen เพื่อไม่กระทบใบพิมพ์ (print) เลย
+   ============================================================ */
+@media screen{
+  :root, :root[data-theme="light"]{
+    --page:#F3F5F9; --paper:#FFFFFF; --ink:#1B2333; --muted:#5D6778; --line:#E2E6EF;
+    --yellow-bg:#FFFBEB; --yellow-border:#F0A020;
+    --blue-bg:#F3F8FF;   --blue-border:#1B62E8;
+    --green-bg:#F2FBF5;  --green-border:#1B7F46;
+    --primary:#1B62E8; --primary-hover:#1450C4; --primary-soft:#E7EFFE;
+    --danger:#B42318; --danger-soft:#FDECEA; --warn:#F08A00;
+    --field-border:#CBD3E1; --field-hover:#A9B4C9;
+    --radius:12px; --radius-sm:8px;
+    --shadow:0 1px 2px rgba(20,35,70,.06), 0 4px 14px rgba(20,35,70,.05);
+    --font:'IBM Plex Sans Thai','Sarabun','Noto Sans Thai',system-ui,-apple-system,'Segoe UI',Arial,sans-serif;
+  }
+
+  body{
+    font-family:var(--font); font-size:14px; line-height:1.5;
+    background:var(--page); color:var(--ink);
+    padding:20px 16px 64px; -webkit-font-smoothing:antialiased;
+  }
+  .tag:empty{display:none;}
+
+  /* ---------- layout ---------- */
+  .page-layout{gap:16px;}
+  .main-col{min-width:0;}
+  @media (min-width:1150px){
+    .page-layout{max-width:1140px;}
+    .main-col{max-width:860px;}
+    .side-panel{width:240px;}
+  }
+
+  /* ---------- top bar: ปุ่มพิมพ์ + แท็บ ---------- */
+  .print-bar{margin:0 0 10px;}
+  .print-bar .btn{
+    background:#FFB020; border-color:#E39A0B; color:#3B2600; font-weight:600;
+  }
+  .print-bar .btn:hover{background:#FFA400; border-color:#D18900;}
+
+  .tabs{
+    display:flex; align-items:center; flex-wrap:wrap; gap:6px;
+    padding:8px 10px; margin:0 0 14px;
+    background:var(--paper); border:1px solid var(--line);
+    border-radius:var(--radius); box-shadow:var(--shadow);
+  }
+  .tab-btn{
+    border:0; background:transparent; color:var(--muted);
+    border-radius:999px; padding:8px 18px; min-height:38px;
+    font:inherit; font-weight:500; cursor:pointer;
+    transition:background-color .15s ease, color .15s ease;
+  }
+  .tab-btn:hover{background:#EEF2F9; color:var(--ink);}
+  .tab-btn.active{background:var(--primary-soft); color:var(--primary); font-weight:700; border:0;}
+  .tab-btn:focus-visible{outline:none; box-shadow:0 0 0 3px rgba(27,98,232,.3);}
+
+  .presence-badge{
+    gap:6px; padding:4px 10px; border-radius:999px;
+    background:#F3F5F9; color:var(--muted); margin-left:auto;
+  }
+  .presence-icon{display:inline-flex; align-items:center; line-height:1;}
+  .presence-icon .ic{width:18px; height:18px;}
+  #presenceText:empty{display:none;}
+  .presence-dot{
+    right:-9px; bottom:-6px; min-width:16px; height:16px;
+    font-size:10px; line-height:12px; border:2px solid #F3F5F9;
+  }
+
+  /* ---------- cards ---------- */
+  .sheet{
+    max-width:none; margin:0; background:transparent; border:0; box-shadow:none;
+    border-radius:0; overflow:visible; display:flex; flex-direction:column; gap:14px;
+  }
+  .section{
+    background:var(--paper); border:1px solid var(--line);
+    border-radius:var(--radius); box-shadow:var(--shadow); padding:20px 24px;
+  }
+  .section:last-child{border-bottom:1px solid var(--line);}
+  /* การ์ดทุกใบเป็นสีขาวล้วน ไม่มีสีพื้น/แถบสีส้ม-ฟ้า-เขียว */
+  .section.yellow, .section.blue, .section.green{background:var(--paper); border-left:1px solid var(--line);}
+  #dbView .section, #summaryView .section{border-left:1px solid var(--line) !important;}
+  #custHint, #balanceHint{color:var(--muted) !important;}
+  h1{font-size:24px; font-weight:700; letter-spacing:-.01em; margin:0 0 14px;}
+
+  /* ---------- forms ---------- */
+  .grid2{gap:14px 16px;}
+  .field{margin-bottom:0;}
+  .grid2 .field{margin-bottom:2px;}
+  label{font-size:13px; font-weight:500; color:var(--muted); margin-bottom:6px;}
+  input, textarea{
+    min-height:40px; padding:9px 12px; font-size:14px;
+    background:#FFFFFF; color:var(--ink);
+    border:1px solid var(--field-border); border-radius:var(--radius-sm);
+    transition:border-color .15s ease, box-shadow .15s ease;
+  }
+  input:hover, textarea:hover{border-color:var(--field-hover);}
+  input:focus, textarea:focus{
+    outline:none; border-color:var(--primary);
+    box-shadow:0 0 0 3px rgba(27,98,232,.18);
+  }
+  ::placeholder{color:#7B8598; opacity:1;}
+  td.num input, .amount, .unitprice{font-variant-numeric:tabular-nums;}
+  textarea.desc, textarea.sum-desc{line-height:1.45;}
+  textarea#details{line-height:1.55;}
+
+  /* ---------- tables ใน section ---------- */
+  .section.blue, .section.green{overflow-x:auto;}
+  #itemsTable, #summaryTable{min-width:520px; margin-top:0;}
+  .section thead th{
+    background:#E9EEF8; color:#2A3448; font-size:13px; font-weight:600;
+    padding:10px 10px; border-bottom:1px solid var(--line);
+  }
+  .section thead th:first-child{border-top-left-radius:8px; border-bottom-left-radius:8px;}
+  .section thead th:last-child{border-top-right-radius:8px; border-bottom-right-radius:8px;}
+  .section.blue td, .section.green td{padding:8px 6px;}
+
+  /* ---------- buttons ---------- */
+  .btn{
+    display:inline-flex; align-items:center; justify-content:center; gap:6px;
+    min-height:36px; padding:7px 14px; border-radius:8px;
+    border:1px solid var(--field-border); background:#FFFFFF; color:var(--ink);
+    font:inherit; font-size:13.5px; font-weight:500; cursor:pointer;
+    transition:background-color .15s ease, border-color .15s ease, color .15s ease, box-shadow .15s ease;
+  }
+  .btn:hover{background:#F3F6FC; border-color:#AEB9CF;}
+  .btn:active{background:#E9EEF8;}
+  .btn:focus-visible{outline:none; box-shadow:0 0 0 3px rgba(27,98,232,.3);}
+  .btn:disabled{opacity:.5; cursor:not-allowed;}
+  .btn .ic{width:16px; height:16px; flex:none;}
+
+  .btn.primary{background:var(--primary); border-color:var(--primary); color:#FFFFFF; font-weight:600;}
+  .btn.primary:hover{background:var(--primary-hover); border-color:var(--primary-hover);}
+  .btn.primary:active{background:#0F43A8;}
+  #saveBtn{min-height:40px; padding:9px 22px;}
+
+  .btn.ghost{background:#FFFFFF; color:var(--muted); border-color:var(--field-border);}
+  .btn.ghost:hover{color:var(--ink); background:#F3F6FC;}
+
+  /* ปุ่ม "+ เพิ่มรายการ / + เพิ่มแถว / Refresh" แบบชิปสีฟ้าอ่อน (เหมือนชิปกรองของ ECOUNT) */
+  .toolbar .btn:not(.primary):not(.ghost),
+  .field .btn:not(.primary):not(.ghost){
+    background:var(--primary-soft); border-color:transparent; color:var(--primary); font-weight:600;
+  }
+  .toolbar .btn:not(.primary):not(.ghost):hover,
+  .field .btn:not(.primary):not(.ghost):hover{background:#D8E5FD;}
+
+  .btn.remove{background:#FFFFFF; color:var(--danger); border-color:#E8B4AE;}
+  .btn.remove:hover{background:var(--danger-soft); border-color:#D98A82;}
+  .row-actions .btn{min-height:34px; padding:5px 12px;}
+
+  .toolbar{gap:8px; margin-top:14px;}
+  #saveStatus{font-size:13px;}
+  #editingBadge{
+    background:var(--primary-soft); color:var(--primary) !important;
+    padding:4px 12px; border-radius:999px; font-weight:600; font-size:13px !important;
+  }
+
+  /* ---------- ข้อความเตือนสีแดง (contrast ≥ 4.5:1) ---------- */
+  #dupWarn{color:var(--danger) !important; font-size:13px !important;}
+  #custDbStatus[style*="229, 118, 107"]{color:var(--danger) !important;}
+  #custDbStatus, #custHint{font-size:12.5px !important;}
+  .dup-badge{color:var(--danger); border-color:#E8B4AE; background:var(--danger-soft); font-weight:600;}
+  tr.dup-row{background:rgba(180,35,24,.06);}
+
+  /* ---------- dropdown ชื่อลูกค้า ---------- */
+  .cust-suggest{
+    border:1px solid var(--field-border); border-radius:10px; margin-top:2px;
+    box-shadow:0 10px 30px rgba(20,35,70,.16); overflow:hidden auto;
+  }
+  .cust-item{padding:10px 12px; font-size:14px;}
+  .cust-item:hover, .cust-item.active{background:var(--primary-soft); color:var(--primary);}
+
+  /* ---------- แผงติดตามยอด (ด้านข้าง) ---------- */
+  .side-panel-inner{
+    background:var(--paper); border:1px solid var(--line);
+    border-radius:var(--radius); box-shadow:var(--shadow); padding:16px;
+  }
+  .side-panel-inner .tag{
+    display:flex; align-items:center; gap:8px; margin-bottom:14px !important;
+    font-size:14px; font-weight:700; letter-spacing:0; color:var(--ink);
+  }
+  .side-panel-inner .tag::before{
+    content:""; width:4px; height:16px; border-radius:2px; background:var(--primary); flex:none;
+  }
+  .side-panel-inner .field{margin-bottom:12px;}
+  #balanceHint{font-size:12.5px !important; line-height:1.4;}
+
+  /* ---------- Database ---------- */
+  #dbTable th{
+    background:#E9EEF8; color:#2A3448; font-size:13px; font-weight:600;
+    padding:10px 10px; border-bottom:1px solid var(--line);
+  }
+  #dbTable th:first-child{border-top-left-radius:8px; border-bottom-left-radius:8px;}
+  #dbTable th:last-child{border-top-right-radius:8px; border-bottom-right-radius:8px;}
+  #dbTable td{padding:10px; font-size:13.5px; border-bottom:1px solid var(--line);}
+  #dbTable tbody tr{transition:background-color .12s ease;}
+  #dbTable tbody tr:hover{background:#F5F8FE;}
+  #dbTable .db-actions{gap:6px;}
+  .db-actions .btn{min-height:32px; padding:4px 10px; font-size:13px;}
+  .db-actions .btn:not(.remove){color:var(--primary); border-color:#C9D8F8;}
+  .db-actions .btn:not(.remove):hover{background:var(--primary-soft);}
+
+  /* ---------- Summary ---------- */
+  #summaryTotalsBar{
+    background:var(--primary-soft); color:var(--ink) !important;
+    padding:10px 14px; border-radius:10px; font-size:14px !important;
+  }
+  #summaryTotalsBar:empty{display:none;}
+  .summary-company-card{
+    background:#FFFFFF; border:1px solid var(--line); border-radius:var(--radius);
+    padding:14px 16px; margin-bottom:12px;
+    transition:box-shadow .15s ease, border-color .15s ease;
+  }
+  .summary-company-card:hover{box-shadow:var(--shadow); border-color:#CBD6EC;}
+  .summary-company-name{font-size:15px; margin-bottom:0;}
+  .summary-company-header:hover .summary-company-name{color:var(--primary);}
+  .summary-company-quick{font-size:13px; color:var(--muted);}
+  .summary-company-table th{background:#F1F4FA; color:#2A3448; padding:8px 8px; font-size:13px;}
+  .summary-company-table td{padding:8px 8px; font-size:14px;}
+  .summary-company-table .num-cell{font-variant-numeric:tabular-nums;}
+
+
+  /* ---------- แก้ไขหลังตรวจภาพจริง ---------- */
+  #dbTable td.db-actions{display:table-cell; white-space:normal; width:172px;}
+  #dbTable td.db-actions .btn{margin:0 6px 6px 0;}
+  #dbTable td:nth-child(3){min-width:190px;}
+  #dbTable td:nth-child(2){white-space:nowrap;}
+  #dbTable td:nth-child(4){white-space:nowrap; font-variant-numeric:tabular-nums;}
+  .summary-company-table th:nth-child(n+2){text-align:right;}
+  .summary-company-header .btn{
+    min-height:32px; padding:4px 12px; font-size:13px;
+    color:var(--primary); border-color:#C9D8F8;
+  }
+  .summary-company-header .btn:hover{background:var(--primary-soft);}
+
+  /* ---------- popup ---------- */
+  .popup-overlay{background:rgba(20,28,45,.5); backdrop-filter:blur(2px);}
+  .popup-card{
+    border:0; border-radius:16px; padding:28px 36px;
+    box-shadow:0 20px 60px rgba(15,25,50,.3);
+  }
+  .popup-msg{font-size:16px; font-weight:600;}
+  .popup-sub{font-size:13.5px;}
+
+  /* ---------- มือถือ / จอสัมผัส ---------- */
+  @media (max-width:520px){
+    body{padding:12px 10px 48px;}
+    .section{padding:16px;}
+    h1{font-size:21px;}
+    .tab-btn{padding:8px 12px;}
+  }
+  @media (pointer:coarse){
+    .btn{min-height:44px;}
+    .row-actions .btn, .db-actions .btn{min-height:40px;}
+    input, textarea{min-height:44px;}
+    .tab-btn{min-height:44px;}
+  }
+
+  /* ---------- ลดการเคลื่อนไหวตามที่ผู้ใช้ตั้งไว้ ---------- */
+  @media (prefers-reduced-motion:reduce){
+    .presence-dot.online, .presence-dot.online.busy{animation:none;}
+    *{transition-duration:.01ms !important;}
+  }
+}
+</style>
+
 </head>
 <body>
 
 <div class="page-layout">
   <div class="main-col">
 
-<div class="print-bar"><button class="btn ghost" onclick="printMemo()">พิมพ์ / บันทึกเป็น PDF</button></div>
+<div class="print-bar" id="printBar"><button class="btn" onclick="printMemo()"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>พิมพ์ / บันทึกเป็น PDF</button></div>
 
 <div class="tabs">
   <button class="tab-btn" id="tabSummaryBtn" onclick="showTab('summary')">Summary</button>
   <button class="tab-btn active" id="tabFormBtn" onclick="showTab('form')">Credit Memo</button>
   <button class="tab-btn" id="tabDbBtn" onclick="showTab('db')">Database</button>
   <div class="presence-badge" title="จำนวนคนที่เปิดหน้านี้อยู่ตอนนี้ (นับรวมตัวเอง) จุดเขียวติด = มีคนอื่นกำลังใช้งานพร้อมกัน">
-    <span class="presence-icon">👤<span class="presence-dot" id="presenceDot"></span></span>
+    <span class="presence-icon"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span class="presence-dot" id="presenceDot"></span></span>
     <span id="presenceText">—</span>
   </div>
-  <button class="btn ghost" id="refreshAllBtn" style="align-self:center;" onclick="refreshAll()" title="ล้างแคชและโหลดข้อมูลใหม่ทั้งหมด (รายชื่อลูกค้า + รายการเอกสาร)">⟳ รีเฟรชทั้งหมด</button>
+  <button class="btn ghost" id="refreshAllBtn" style="align-self:center;" onclick="refreshAll()" title="ล้างแคชและโหลดข้อมูลใหม่ทั้งหมด (รายชื่อลูกค้า + รายการเอกสาร)"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>Refresh all</button>
 </div>
 
 <div class="sheet" id="formView">
@@ -398,7 +670,7 @@ The above amount is calculated based on the actual amount paid after discount.</
   <section class="section" style="border-left:5px solid var(--muted);">
     <div class="tag"></div>
     <div class="toolbar" style="margin-top:0;margin-bottom:10px;">
-      <button class="btn" onclick="refreshList(true)">รีเฟรช</button>
+      <button class="btn" onclick="refreshList(true)">Refresh</button>
     </div>
     <div style="overflow-x:auto;">
       <table id="dbTable">
@@ -417,7 +689,7 @@ The above amount is calculated based on the actual amount paid after discount.</
   <section class="section" style="border-left:5px solid var(--muted);">
     <div class="tag"></div>
     <div class="toolbar" style="margin-top:0;margin-bottom:10px;">
-      <button class="btn" onclick="refreshSummary(true)">รีเฟรช</button>
+      <button class="btn" onclick="refreshSummary(true)">Refresh</button>
       <button class="btn ghost" onclick="expandAllSummary()">ขยายทั้งหมด</button>
       <button class="btn ghost" onclick="collapseAllSummary()">ย่อทั้งหมด</button>
     </div>
@@ -525,8 +797,9 @@ function showTab(name){
   document.getElementById('tabDbBtn').classList.toggle('active', isDb);
   document.getElementById('tabSummaryBtn').classList.toggle('active', isSummary);
   document.getElementById('sidePanel').style.display = isForm ? '' : 'none';
+  document.getElementById('printBar').style.display = isForm ? '' : 'none'; // ปุ่มพิมพ์แสดงเฉพาะแท็บ Credit Memo
   if (isDb){
-    // ใช้ข้อมูลที่แคชไว้แล้ว (จากตอนโหลดหน้าเว็บ/บันทึก/รีเฟรชล่าสุด) ไม่ต้องยิง request ใหม่ทุกครั้งที่สลับแท็บ
+    // ใช้ข้อมูลที่แคชไว้แล้ว (จากตอนโหลดหน้าเว็บ/บันทึก/Refreshล่าสุด) ไม่ต้องยิง request ใหม่ทุกครั้งที่สลับแท็บ
     if (Array.isArray(window._memoCache)) renderList(window._memoCache);
     else refreshList(true);
   }
@@ -604,7 +877,7 @@ function checkDupNow(){
 
 // ---- เลขที่เอกสารอัตโนมัติ รูปแบบ CM + ปี(2หลัก) + เดือน(2หลัก) + ลำดับ(3หลัก) เช่น CM2609001 ----
 // อิงจากวันที่ในฟอร์ม (ช่อง วันที่) หาเลขลำดับถัดไปของเดือนนั้นจากรายการที่มีอยู่ในฐานข้อมูล
-// จะเติมให้อัตโนมัติตอนเปิดหน้าเว็บครั้งแรก และตอนกด "เริ่มรายการใหม่" / "คัดลอกไปทำต่อ" หรือเปลี่ยนวันที่
+// จะเติมให้อัตโนมัติตอนเปิดหน้าเว็บครั้งแรก และตอนกด "เริ่มรายการใหม่" / "Copy ไปทำต่อ" หรือเปลี่ยนวันที่
 // (จะไม่เขียนทับถ้าผู้ใช้เคยพิมพ์แก้เลขที่เองแล้ว จนกว่าจะกด "เริ่มรายการใหม่" อีกครั้ง)
 window._memoNoAuto = true;
 
@@ -646,7 +919,7 @@ function normName(v){ return String(v||'').replace(/\s+/g,' ').trim().toLowerCas
 
 // ---- โหลดฐานข้อมูลลูกค้า พร้อม retry อัตโนมัติจนกว่าจะสำเร็จ ----
 // ถ้าเชื่อมต่อ Apps Script ไม่ได้ (เช่น เน็ตหลุดชั่วคราว, สคริปต์ยังตื่นช้า) จะลองใหม่ให้เอง
-// เป็นระยะ (หน่วงเวลาเพิ่มขึ้นทีละนิดจนกว่าจะสำเร็จ สูงสุด 30 วิ/ครั้ง) โดยไม่ต้องให้ผู้ใช้กดรีเฟรชเอง
+// เป็นระยะ (หน่วงเวลาเพิ่มขึ้นทีละนิดจนกว่าจะสำเร็จ สูงสุด 30 วิ/ครั้ง) โดยไม่ต้องให้ผู้ใช้กดRefreshเอง
 // และจะหยุดลองชั่วคราวถ้าผู้ใช้สลับไปแท็บอื่น แล้วลองต่อทันทีเมื่อกลับมาเปิดแท็บนี้อีกครั้ง
 window._custRetryAttempt = 0;
 window._custRetryTimer = null;
@@ -812,8 +1085,8 @@ async function refreshAll(){
   if (btn.disabled) return;
   const originalHTML = btn.innerHTML;
   btn.disabled = true;
-  btn.innerHTML = '<span class="mini-spinner"></span>กำลังรีเฟรช...';
-  showPopup('loading', 'กำลังรีเฟรชทั้งหมด...', 'ล้างแคชและโหลดข้อมูลใหม่');
+  btn.innerHTML = '<span class="mini-spinner"></span>กำลัง Refresh...';
+  showPopup('loading', 'กำลัง Refresh all...', 'ล้างแคชและโหลดข้อมูลใหม่');
   try{
     try{ await fetch(SCRIPT_URL + '?action=clearCache'); }catch(e){}
     const [list] = await Promise.all([
@@ -823,9 +1096,9 @@ async function refreshAll(){
     if (Array.isArray(list)) renderList(list);
     checkDupNow();
     if (window._memoNoAuto) applyAutoMemoNo();
-    showPopup('success', 'รีเฟรชทั้งหมดแล้ว', '');
+    showPopup('success', 'Refresh all แล้ว', '');
   }catch(e){
-    showPopup('error', 'รีเฟรชไม่สำเร็จ', 'ตรวจสอบการเชื่อมต่ออินเทอร์เน็ต แล้วลองอีกครั้ง');
+    showPopup('error', 'Refresh ไม่สำเร็จ', 'ตรวจสอบการเชื่อมต่ออินเทอร์เน็ต แล้วลองอีกครั้ง');
   } finally {
     btn.innerHTML = originalHTML;
     setTimeout(()=>{ btn.disabled = false; }, 5000);
@@ -1003,7 +1276,7 @@ async function refreshList(withPopup){
     if (withPopup) hidePopup();
   }catch(e){
     el.innerHTML = '<tr><td colspan="6" style="color:var(--muted);font-size:13px;">โหลดรายการไม่สำเร็จ</td></tr>';
-    if (withPopup) showPopup('error', 'โหลดข้อมูลไม่สำเร็จ', 'ตรวจสอบการเชื่อมต่ออินเทอร์เน็ต แล้วกดรีเฟรชอีกครั้ง');
+    if (withPopup) showPopup('error', 'โหลดข้อมูลไม่สำเร็จ', 'ตรวจสอบการเชื่อมต่ออินเทอร์เน็ต แล้วกด Refresh อีกครั้ง');
   }
 }
 
@@ -1030,7 +1303,7 @@ function renderList(list){
       <td>${updatedStr ? 'แก้ไข '+updatedStr : 'บันทึก '+savedStr}</td>
       <td class="db-actions">
         <button class="btn" onclick='editFromDb(${JSON.stringify(data.id)})'>แก้ไข</button>
-        <button class="btn" onclick='copyMemo(${JSON.stringify(data.id)})'>คัดลอกไปทำต่อ</button>
+        <button class="btn" onclick='copyMemo(${JSON.stringify(data.id)})'>Copy ไปทำต่อ</button>
         <button class="btn remove" onclick='deleteMemo(${JSON.stringify(data.id)})'>ลบ</button>
       </td>`;
     el.appendChild(tr);
@@ -1107,7 +1380,7 @@ function renderSummary(list){
         <div class="summary-company-name">${escapeHtml(s.name)}</div>
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
           <span class="summary-company-quick">คงค้าง ${fmt(s.subOutstanding)} &nbsp;|&nbsp; ต้องชำระเพิ่ม ${fmt(s.subDue)}</span>
-          ${latest ? `<button class="btn" onclick='event.stopPropagation();copyMemo(${JSON.stringify(latest.id)})' title="คัดลอกเอกสารล่าสุด (${escapeAttr(latest.memoNo||'')}) ไปทำต่อ">คัดลอกล่าสุดไปทำต่อ</button>` : ''}
+          ${latest ? `<button class="btn" onclick='event.stopPropagation();copyMemo(${JSON.stringify(latest.id)})' title="Copy เอกสารล่าสุด (${escapeAttr(latest.memoNo||'')}) ไปทำต่อ">Copy ล่าสุดไปทำต่อ</button>` : ''}
           <span class="summary-toggle-icon" id="${bodyId}_icon">▾</span>
         </div>
       </div>
@@ -1155,7 +1428,7 @@ function copyMemo(id){
   setEditingBadge(null);
   window._memoNoAuto = true;   // ให้เลขที่รันต่ออัตโนมัติ
   applyAutoMemoNo();           // เติมเลขถัดไป เช่น CM2609004 และเช็กเลขซ้ำให้ด้วย
-  document.getElementById('saveStatus').textContent = 'คัดลอกมาเป็นรายการใหม่แล้ว — แก้แล้วกด "บันทึกลงระบบ" เพื่อสร้างเป็นรายการแยก';
+  document.getElementById('saveStatus').textContent = 'Copy มาเป็นรายการใหม่แล้ว — แก้แล้วกด "บันทึกลงระบบ" เพื่อสร้างเป็นรายการแยก';
   setTimeout(()=>{ document.getElementById('saveStatus').textContent=''; }, 4000);
   showTab('form');
   window.scrollTo({top:0, behavior:'smooth'});

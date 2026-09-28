@@ -289,8 +289,6 @@
   <button class="btn ghost" id="refreshAllBtn" style="align-self:center;" onclick="refreshAll()" title="ล้างแคชและโหลดข้อมูลใหม่ทั้งหมด (รายชื่อลูกค้า + รายการเอกสาร)">⟳ รีเฟรชทั้งหมด</button>
 </div>
 
-<div id="printSheet"></div>
-
 <div class="sheet" id="formView">
 
   <section class="section yellow">
@@ -447,6 +445,10 @@ The above amount is calculated based on the actual amount paid after discount.</
 
 </div><!-- /page-layout -->
 
+<!-- ต้องอยู่เป็นลูกตรงของ <body> เพื่อให้กฎ print "body > *:not(#printSheet)" ทำงานถูกต้อง
+     (ถ้าไปอยู่ใน .page-layout จะโดนซ่อนไปด้วย ทำให้ PDF เป็นหน้าขาว) -->
+<div id="printSheet"></div>
+
 <script>
 const DEFAULT_SUMMARY = [
   'ยอดเงินเครดิตคงเหลือสุทธิ\nNET CREDIT BALANCE',
@@ -602,7 +604,7 @@ function checkDupNow(){
 
 // ---- เลขที่เอกสารอัตโนมัติ รูปแบบ CM + ปี(2หลัก) + เดือน(2หลัก) + ลำดับ(3หลัก) เช่น CM2609001 ----
 // อิงจากวันที่ในฟอร์ม (ช่อง วันที่) หาเลขลำดับถัดไปของเดือนนั้นจากรายการที่มีอยู่ในฐานข้อมูล
-// จะเติมให้อัตโนมัติตอนเปิดหน้าเว็บครั้งแรก และตอนกด "เริ่มรายการใหม่" หรือเปลี่ยนวันที่
+// จะเติมให้อัตโนมัติตอนเปิดหน้าเว็บครั้งแรก และตอนกด "เริ่มรายการใหม่" / "คัดลอกไปทำต่อ" หรือเปลี่ยนวันที่
 // (จะไม่เขียนทับถ้าผู้ใช้เคยพิมพ์แก้เลขที่เองแล้ว จนกว่าจะกด "เริ่มรายการใหม่" อีกครั้ง)
 window._memoNoAuto = true;
 
@@ -1158,7 +1160,7 @@ function copyMemo(id){
   showTab('form');
   window.scrollTo({top:0, behavior:'smooth'});
 }
-  
+
 function loadMemo(id){
   const data = (window._memoCache || []).find(d=>d.id===id);
   if (!data) return;

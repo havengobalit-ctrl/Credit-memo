@@ -511,6 +511,12 @@
   }
   .summary-company-header .btn:hover{background:var(--primary-soft);}
 
+  /* ซ่อนแผงด้านข้างโดยคงพื้นที่ไว้ (จอกว้าง) เพื่อให้คอลัมน์หลักและแท็บอยู่ตำแหน่งเดิมทุกแท็บ */
+  .side-panel.is-hidden{display:none;}
+  @media (min-width:1150px){
+    .side-panel.is-hidden{display:block; visibility:hidden;}
+  }
+
   /* ---------- popup ---------- */
   .popup-overlay{background:rgba(20,28,45,.5); backdrop-filter:blur(2px);}
   .popup-card{
@@ -796,8 +802,8 @@ function showTab(name){
   document.getElementById('tabFormBtn').classList.toggle('active', isForm);
   document.getElementById('tabDbBtn').classList.toggle('active', isDb);
   document.getElementById('tabSummaryBtn').classList.toggle('active', isSummary);
-  document.getElementById('sidePanel').style.display = isForm ? '' : 'none';
-  document.getElementById('printBar').style.display = isForm ? '' : 'none'; // ปุ่มพิมพ์แสดงเฉพาะแท็บ Credit Memo
+  document.getElementById('sidePanel').classList.toggle('is-hidden', !isForm); // ซ่อนแผงข้าง (คงพื้นที่ไว้บนจอกว้าง)
+  document.getElementById('printBar').style.visibility = isForm ? '' : 'hidden'; // ปุ่มพิมพ์แสดงเฉพาะแท็บ Credit Memo (คงพื้นที่ไว้ ไม่ให้แท็บขยับ)
   if (isDb){
     // ใช้ข้อมูลที่แคชไว้แล้ว (จากตอนโหลดหน้าเว็บ/บันทึก/Refreshล่าสุด) ไม่ต้องยิง request ใหม่ทุกครั้งที่สลับแท็บ
     if (Array.isArray(window._memoCache)) renderList(window._memoCache);
@@ -1303,7 +1309,7 @@ function renderList(list){
       <td>${updatedStr ? 'แก้ไข '+updatedStr : 'บันทึก '+savedStr}</td>
       <td class="db-actions">
         <button class="btn" onclick='editFromDb(${JSON.stringify(data.id)})'>แก้ไข</button>
-        <button class="btn" onclick='copyMemo(${JSON.stringify(data.id)})'>Copy ไปทำต่อ</button>
+        <button class="btn" onclick='copyMemo(${JSON.stringify(data.id)})'>Copy</button>
         <button class="btn remove" onclick='deleteMemo(${JSON.stringify(data.id)})'>ลบ</button>
       </td>`;
     el.appendChild(tr);

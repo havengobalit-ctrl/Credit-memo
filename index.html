@@ -1386,7 +1386,7 @@ function renderSummary(list){
         <div class="summary-company-name">${escapeHtml(s.name)}</div>
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
           <span class="summary-company-quick">คงค้าง ${fmt(s.subOutstanding)} &nbsp;|&nbsp; ต้องชำระเพิ่ม ${fmt(s.subDue)}</span>
-          ${latest ? `<button class="btn" onclick='event.stopPropagation();copyMemo(${JSON.stringify(latest.id)})' title="Copy เอกสารล่าสุด (${escapeAttr(latest.memoNo||'')}) ไปทำต่อ">Copy ล่าสุดไปทำต่อ</button>` : ''}
+          ${latest ? `<button class="btn" onclick='event.stopPropagation();copyMemo(${JSON.stringify(latest.id)})' title="Copy เอกสารล่าสุด (${escapeAttr(latest.memoNo||'')}) ไปทำต่อ">Copy</button>` : ''}
           <span class="summary-toggle-icon" id="${bodyId}_icon">▾</span>
         </div>
       </div>

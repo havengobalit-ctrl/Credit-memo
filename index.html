@@ -1236,6 +1236,7 @@ async function saveMemo(){
     setEditingBadge(data.memoNo);
     showPopup('success', isUpdate ? 'อัปเดตแล้ว' : 'บันทึกแล้ว', data.memoNo || '');
     refreshList();
+    loadCustomers(); // ถ้ามีลูกค้าใหม่ backend เพิ่มลงชีต Data ให้แล้ว โหลดรายชื่อใหม่มาอัปเดต dropdown
   }catch(e){
     showPopup('error', 'บันทึกไม่สำเร็จ', 'ตรวจสอบ SCRIPT_URL / การเชื่อมต่ออินเทอร์เน็ต');
   }

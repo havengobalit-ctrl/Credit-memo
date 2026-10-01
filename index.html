@@ -252,9 +252,9 @@
   .side-panel-inner{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:14px 16px;box-shadow:0 1px 3px rgba(0,0,0,.08);}
   .side-panel-inner .field:last-child{margin-bottom:0;}
   @media (min-width:1150px){
-    .page-layout{flex-direction:row;align-items:flex-start;justify-content:center;max-width:1080px;}
+    .page-layout{flex-direction:row;align-items:center;justify-content:center;max-width:1080px;}
     .main-col{flex:1;max-width:820px;}
-    .side-panel{width:220px;flex:none;position:sticky;top:50%;transform:translateY(-50%);}
+    .side-panel{width:220px;flex:none;}
   }
 
   /* ---- Summary tab ---- */
@@ -275,6 +275,10 @@
   .summary-has-balance .summary-company-name{color:var(--blue-border);}
 </style>
 <style id="ecount-theme">
+/* ============================================================
+   ECOUNT-inspired theme — ปรับหน้าตาเท่านั้น (ไม่แตะ JS / id / โครงสร้างข้อมูล / backend)
+   ครอบด้วย @media screen เพื่อไม่กระทบใบพิมพ์ (print) เลย
+   ============================================================ */
 @media screen{
   :root, :root[data-theme="light"]{
     --page:#F3F5F9; --paper:#FFFFFF; --ink:#1B2333; --muted:#5D6778; --line:#E2E6EF;
@@ -296,6 +300,7 @@
   }
   .tag:empty{display:none;}
 
+  /* ---------- layout ---------- */
   .page-layout{gap:16px;}
   .main-col{min-width:0;}
   @media (min-width:1150px){
@@ -304,6 +309,7 @@
     .side-panel{width:240px;}
   }
 
+  /* ---------- top bar: ปุ่มพิมพ์ + แท็บ ---------- */
   .print-bar{margin:0 0 10px;}
   .print-bar .btn{
     background:#FFB020; border-color:#E39A0B; color:#3B2600; font-weight:600;
@@ -338,6 +344,7 @@
     font-size:10px; line-height:12px; border:2px solid #F3F5F9;
   }
 
+  /* ---------- cards ---------- */
   .sheet{
     max-width:none; margin:0; background:transparent; border:0; box-shadow:none;
     border-radius:0; overflow:visible; display:flex; flex-direction:column; gap:14px;
@@ -347,11 +354,13 @@
     border-radius:var(--radius); box-shadow:var(--shadow); padding:20px 24px;
   }
   .section:last-child{border-bottom:1px solid var(--line);}
+  /* การ์ดทุกใบเป็นสีขาวล้วน ไม่มีสีพื้น/แถบสีส้ม-ฟ้า-เขียว */
   .section.yellow, .section.blue, .section.green{background:var(--paper); border-left:1px solid var(--line);}
   #dbView .section, #summaryView .section{border-left:1px solid var(--line) !important;}
   #custHint, #balanceHint{color:var(--muted) !important;}
   h1{font-size:24px; font-weight:700; letter-spacing:-.01em; margin:0 0 14px;}
 
+  /* ---------- forms ---------- */
   .grid2{gap:14px 16px;}
   .field{margin-bottom:0;}
   .grid2 .field{margin-bottom:2px;}
@@ -372,6 +381,7 @@
   textarea.desc, textarea.sum-desc{line-height:1.45;}
   textarea#details{line-height:1.55;}
 
+  /* ---------- tables ใน section ---------- */
   .section.blue, .section.green{overflow-x:auto;}
   #itemsTable, #summaryTable{min-width:520px; margin-top:0;}
   .section thead th{
@@ -382,6 +392,7 @@
   .section thead th:last-child{border-top-right-radius:8px; border-bottom-right-radius:8px;}
   .section.blue td, .section.green td{padding:8px 6px;}
 
+  /* ---------- buttons ---------- */
   .btn{
     display:inline-flex; align-items:center; justify-content:center; gap:6px;
     min-height:36px; padding:7px 14px; border-radius:8px;
@@ -403,6 +414,7 @@
   .btn.ghost{background:#FFFFFF; color:var(--muted); border-color:var(--field-border);}
   .btn.ghost:hover{color:var(--ink); background:#F3F6FC;}
 
+  /* ปุ่ม "+ เพิ่มรายการ / + เพิ่มแถว / Refresh" แบบชิปสีฟ้าอ่อน (เหมือนชิปกรองของ ECOUNT) */
   .toolbar .btn:not(.primary):not(.ghost),
   .field .btn:not(.primary):not(.ghost){
     background:var(--primary-soft); border-color:transparent; color:var(--primary); font-weight:600;
@@ -421,12 +433,14 @@
     padding:4px 12px; border-radius:999px; font-weight:600; font-size:13px !important;
   }
 
+  /* ---------- ข้อความเตือนสีแดง (contrast ≥ 4.5:1) ---------- */
   #dupWarn{color:var(--danger) !important; font-size:13px !important;}
   #custDbStatus[style*="229, 118, 107"]{color:var(--danger) !important;}
   #custDbStatus, #custHint{font-size:12.5px !important;}
   .dup-badge{color:var(--danger); border-color:#E8B4AE; background:var(--danger-soft); font-weight:600;}
   tr.dup-row{background:rgba(180,35,24,.06);}
 
+  /* ---------- dropdown ชื่อลูกค้า ---------- */
   .cust-suggest{
     border:1px solid var(--field-border); border-radius:10px; margin-top:2px;
     box-shadow:0 10px 30px rgba(20,35,70,.16); overflow:hidden auto;
@@ -434,6 +448,7 @@
   .cust-item{padding:10px 12px; font-size:14px;}
   .cust-item:hover, .cust-item.active{background:var(--primary-soft); color:var(--primary);}
 
+  /* ---------- แผงติดตามยอด (ด้านข้าง) ---------- */
   .side-panel-inner{
     background:var(--paper); border:1px solid var(--line);
     border-radius:var(--radius); box-shadow:var(--shadow); padding:16px;
@@ -448,6 +463,7 @@
   .side-panel-inner .field{margin-bottom:12px;}
   #balanceHint{font-size:12.5px !important; line-height:1.4;}
 
+  /* ---------- Database ---------- */
   #dbTable th{
     background:#E9EEF8; color:#2A3448; font-size:13px; font-weight:600;
     padding:10px 10px; border-bottom:1px solid var(--line);
@@ -462,6 +478,7 @@
   .db-actions .btn:not(.remove){color:var(--primary); border-color:#C9D8F8;}
   .db-actions .btn:not(.remove):hover{background:var(--primary-soft);}
 
+  /* ---------- Summary ---------- */
   #summaryTotalsBar{
     background:var(--primary-soft); color:var(--ink) !important;
     padding:10px 14px; border-radius:10px; font-size:14px !important;
@@ -481,6 +498,7 @@
   .summary-company-table .num-cell{font-variant-numeric:tabular-nums;}
 
 
+  /* ---------- แก้ไขหลังตรวจภาพจริง ---------- */
   #dbTable td.db-actions{display:table-cell; white-space:normal; width:172px;}
   #dbTable td.db-actions .btn{margin:0 6px 6px 0;}
   #dbTable td:nth-child(3){min-width:190px;}
@@ -493,11 +511,13 @@
   }
   .summary-company-header .btn:hover{background:var(--primary-soft);}
 
+  /* ซ่อนแผงด้านข้างโดยคงพื้นที่ไว้ (จอกว้าง) เพื่อให้คอลัมน์หลักและแท็บอยู่ตำแหน่งเดิมทุกแท็บ */
   .side-panel.is-hidden{display:none;}
   @media (min-width:1150px){
     .side-panel.is-hidden{display:block; visibility:hidden;}
   }
 
+  /* ---------- popup ---------- */
   .popup-overlay{background:rgba(20,28,45,.5); backdrop-filter:blur(2px);}
   .popup-card{
     border:0; border-radius:16px; padding:28px 36px;
@@ -506,6 +526,7 @@
   .popup-msg{font-size:16px; font-weight:600;}
   .popup-sub{font-size:13.5px;}
 
+  /* ---------- มือถือ / จอสัมผัส ---------- */
   @media (max-width:520px){
     body{padding:12px 10px 48px;}
     .section{padding:16px;}
@@ -519,6 +540,7 @@
     .tab-btn{min-height:44px;}
   }
 
+  /* ---------- ลดการเคลื่อนไหวตามที่ผู้ใช้ตั้งไว้ ---------- */
   @media (prefers-reduced-motion:reduce){
     .presence-dot.online, .presence-dot.online.busy{animation:none;}
     *{transition-duration:.01ms !important;}
@@ -570,7 +592,7 @@
       </div>
       <div class="field">
         <label>วันที่ (Date)</label>
-        <input id="memoDate" type="date" value="2026-09-09" onchange="onMemoDateChange()">
+        <input id="memoDate" type="date" onchange="onMemoDateChange()">
       </div>
       <div class="field">
         <label>ลูกค้า (Customer)</label>
@@ -701,6 +723,8 @@ The above amount is calculated based on the actual amount paid after discount.</
 
 </div><!-- /page-layout -->
 
+<!-- ต้องอยู่เป็นลูกตรงของ <body> เพื่อให้กฎ print "body > *:not(#printSheet)" ทำงานถูกต้อง
+     (ถ้าไปอยู่ใน .page-layout จะโดนซ่อนไปด้วย ทำให้ PDF เป็นหน้าขาว) -->
 <div id="printSheet"></div>
 
 <script>
@@ -766,6 +790,14 @@ updateTotal();
 resetSummaryRows();
 document.querySelectorAll('textarea.desc, textarea.sum-desc').forEach(autoGrow);
 
+// ช่อง "วันที่" ให้เป็นวันที่ปัจจุบันเสมอตอนเปิดหน้าเว็บ (ใช้เวลาเครื่องผู้ใช้ ไม่ใช่ UTC)
+function todayStr(){
+  const d = new Date();
+  const p = n => String(n).padStart(2,'0');
+  return d.getFullYear() + '-' + p(d.getMonth()+1) + '-' + p(d.getDate());
+}
+setVal('memoDate', todayStr());
+
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzekpl6Eg8ulCxJq-r2IjKcVPp09R4nepS7VsYV8uIQiyNhVi-S8eCcsaRPmgv13woaCw/exec';
 
 function showTab(name){
@@ -778,9 +810,10 @@ function showTab(name){
   document.getElementById('tabFormBtn').classList.toggle('active', isForm);
   document.getElementById('tabDbBtn').classList.toggle('active', isDb);
   document.getElementById('tabSummaryBtn').classList.toggle('active', isSummary);
-  document.getElementById('sidePanel').classList.toggle('is-hidden', !isForm);
-  document.getElementById('printBar').style.visibility = isForm ? '' : 'hidden';
+  document.getElementById('sidePanel').classList.toggle('is-hidden', !isForm); // ซ่อนแผงข้าง (คงพื้นที่ไว้บนจอกว้าง)
+  document.getElementById('printBar').style.visibility = isForm ? '' : 'hidden'; // ปุ่มพิมพ์แสดงเฉพาะแท็บ Credit Memo (คงพื้นที่ไว้ ไม่ให้แท็บขยับ)
   if (isDb){
+    // ใช้ข้อมูลที่แคชไว้แล้ว (จากตอนโหลดหน้าเว็บ/บันทึก/Refreshล่าสุด) ไม่ต้องยิง request ใหม่ทุกครั้งที่สลับแท็บ
     if (Array.isArray(window._memoCache)) renderList(window._memoCache);
     else refreshList(true);
   }
@@ -856,6 +889,10 @@ function checkDupNow(){
   }
 }
 
+// ---- เลขที่เอกสารอัตโนมัติ รูปแบบ CM + ปี(2หลัก) + เดือน(2หลัก) + ลำดับ(3หลัก) เช่น CM2609001 ----
+// อิงจากวันที่ในฟอร์ม (ช่อง วันที่) หาเลขลำดับถัดไปของเดือนนั้นจากรายการที่มีอยู่ในฐานข้อมูล
+// จะเติมให้อัตโนมัติตอนเปิดหน้าเว็บครั้งแรก และตอนกด "เริ่มรายการใหม่" / "Copy ไปทำต่อ" หรือเปลี่ยนวันที่
+// (จะไม่เขียนทับถ้าผู้ใช้เคยพิมพ์แก้เลขที่เองแล้ว จนกว่าจะกด "เริ่มรายการใหม่" อีกครั้ง)
 window._memoNoAuto = true;
 
 function computeNextMemoNo(dateStr){
@@ -883,7 +920,7 @@ function applyAutoMemoNo(){
 }
 
 function onMemoNoManualEdit(){
-  window._memoNoAuto = false;
+  window._memoNoAuto = false; // ผู้ใช้แก้เลขเอง เลิกเติมให้อัตโนมัติจนกว่าจะเริ่มรายการใหม่
   checkDupNow();
 }
 
@@ -894,6 +931,10 @@ window._customers = [];
 window._suggIdx = -1;
 function normName(v){ return String(v||'').replace(/\s+/g,' ').trim().toLowerCase(); }
 
+// ---- โหลดฐานข้อมูลลูกค้า พร้อม retry อัตโนมัติจนกว่าจะสำเร็จ ----
+// ถ้าเชื่อมต่อ Apps Script ไม่ได้ (เช่น เน็ตหลุดชั่วคราว, สคริปต์ยังตื่นช้า) จะลองใหม่ให้เอง
+// เป็นระยะ (หน่วงเวลาเพิ่มขึ้นทีละนิดจนกว่าจะสำเร็จ สูงสุด 30 วิ/ครั้ง) โดยไม่ต้องให้ผู้ใช้กดRefreshเอง
+// และจะหยุดลองชั่วคราวถ้าผู้ใช้สลับไปแท็บอื่น แล้วลองต่อทันทีเมื่อกลับมาเปิดแท็บนี้อีกครั้ง
 window._custRetryAttempt = 0;
 window._custRetryTimer = null;
 window._custRetryVisHandler = null;
@@ -941,7 +982,7 @@ async function loadCustomers(){
   }
 
   window._custRetryAttempt++;
-  const delaySec = Math.min(30, 2 * window._custRetryAttempt);
+  const delaySec = Math.min(30, 2 * window._custRetryAttempt); // หน่วงเพิ่มทีละ 2 วิ สูงสุด 30 วิ
   st.style.color = '#E5766B';
   st.textContent = '⚠ โหลดฐานข้อมูลลูกค้าไม่ได้: ' + reason + ' — กำลังลองใหม่อัตโนมัติใน ' + delaySec + ' วิ';
 
@@ -950,6 +991,7 @@ async function loadCustomers(){
       if (document.visibilityState === 'visible'){
         loadCustomers();
       } else {
+        // แท็บไม่ได้เปิดอยู่ตอนนี้ — รอจนกว่าจะกลับมาเปิดแท็บแล้วค่อยลองใหม่ทันที
         window._custRetryVisHandler = function(){
           if (document.visibilityState === 'visible'){
             document.removeEventListener('visibilitychange', window._custRetryVisHandler);
@@ -980,6 +1022,9 @@ function pickCustomer(c){
   applyLatestBalanceForCustomer(c.name);
 }
 
+// ---- ดึงยอดคงค้าง / ต้องชำระเพิ่ม จากเอกสารล่าสุดของลูกค้ารายนั้น มาโชว์ในช่อง "ติดตามยอด" ----
+// ทำงานตอนเลือกชื่อลูกค้า (จากรายการแนะนำ หรือพิมพ์ตรงชื่อเป๊ะ) เฉพาะตอนเริ่มรายการใหม่เท่านั้น
+// (ไม่ทับข้อมูลตอนกำลังแก้ไขเอกสารเดิม เพราะช่องนั้นถูกโหลดมาจากเอกสารนั้นอยู่แล้ว)
 function findLatestMemoForCustomer(custName){
   const key = normName(custName);
   if (!key) return null;
@@ -989,7 +1034,7 @@ function findLatestMemoForCustomer(custName){
 }
 function applyLatestBalanceForCustomer(custName){
   const hint = document.getElementById('balanceHint');
-  if (window._currentId){ return; }
+  if (window._currentId){ return; } // กำลังแก้ไขเอกสารเดิมอยู่ ไม่ต้องไปทับ
   const latest = findLatestMemoForCustomer(custName);
   if (!latest){
     if (hint){ hint.style.display = 'none'; hint.textContent = ''; }
@@ -1115,9 +1160,11 @@ async function sendHeartbeat_(){
     const count = data && typeof data.count === 'number' ? data.count : undefined;
     updatePresenceUI_(count);
     if (count !== undefined) window._presenceReady = true;
-  }catch(e){ }
+  }catch(e){ /* ไม่ต้องขึ้น error รบกวน ถ้าข้อมูลหลักโหลดสำเร็จอยู่แล้ว จะลองใหม่รอบถัดไปเอง */ }
 }
 
+// โหลดข้อมูลตอนเปิดหน้าเว็บครั้งแรกทั้งหมดพร้อมกัน (รายการ Memos + รายชื่อลูกค้า + เช็กสถานะออนไลน์)
+// แสดง popup ค้างไว้จนกว่าจะครบทุกอย่าง แล้วค่อยเริ่มส่ง heartbeat ต่อเนื่องเป็นระยะ
 async function initialLoad_(){
   showPopup('loading', 'กำลังโหลดข้อมูล...', 'กรุณารอสักครู่');
   await Promise.allSettled([
@@ -1197,7 +1244,7 @@ async function saveMemo(){
     setEditingBadge(data.memoNo);
     showPopup('success', isUpdate ? 'อัปเดตแล้ว' : 'บันทึกแล้ว', data.memoNo || '');
     refreshList();
-    loadCustomers();
+    loadCustomers(); // ถ้ามีลูกค้าใหม่ backend เพิ่มลงชีต Data ให้แล้ว โหลดรายชื่อใหม่มาอัปเดต dropdown
   }catch(e){
     showPopup('error', 'บันทึกไม่สำเร็จ', 'ตรวจสอบ SCRIPT_URL / การเชื่อมต่ออินเทอร์เน็ต');
   }
@@ -1218,6 +1265,7 @@ function newMemo(){
   if (balHint){ balHint.style.display = 'none'; balHint.textContent = ''; }
   const custHint = document.getElementById('custHint');
   if (custHint){ custHint.style.display = 'none'; custHint.textContent = ''; }
+  setVal('memoDate', todayStr()); // เริ่มรายการใหม่ทีไร วันที่กลับไปเป็นวันนี้เสมอ
   const tbody = document.getElementById('itemsBody');
   tbody.innerHTML = '<tr><td><textarea class="desc" rows="1" oninput="autoGrow(this)"></textarea></td><td class="num"><input type="number" class="unitprice" step="0.01" oninput="syncAmount(this)"></td><td class="num"><input type="number" class="amount" step="0.01"></td><td class="row-actions"><button class="btn remove" onclick="removeRow(this)">ลบ</button></td></tr>';
   updateTotal();
@@ -1307,6 +1355,8 @@ function renderSummary(list){
     groups[key].push(d);
   });
 
+  // รวบรวมยอดของแต่ละบริษัทก่อน เพื่อใช้จัดเรียง — บริษัทที่ยังมียอดคงค้าง/ต้องชำระเพิ่ม ให้ขึ้นก่อน
+  // เรียงจากยอดรวม (ค่าสัมบูรณ์ของคงค้าง+ต้องชำระเพิ่ม) มากไปน้อย ส่วนบริษัทที่ยอด 0 ให้เรียงตามชื่อไว้ท้ายสุด
   const names = Object.keys(groups);
   const summaries = names.map(name=>{
     const memos = groups[name].slice().sort((a,b)=> Number(b.savedAt) - Number(a.savedAt));
@@ -1337,7 +1387,7 @@ function renderSummary(list){
 
     const bodyId = 'sumBody_' + idx;
     const hasBalance = s.weight > 0;
-    const latest = s.memos[0];
+    const latest = s.memos[0]; // memos เรียงจากล่าสุดไปเก่าสุดแล้ว (ตาม savedAt)
 
     const card = document.createElement('div');
     card.className = 'summary-company-card' + (hasBalance ? ' summary-has-balance' : '');
@@ -1392,8 +1442,8 @@ function copyMemo(id){
   window._currentId = null;
   window._currentSavedAt = null;
   setEditingBadge(null);
-  window._memoNoAuto = true;
-  applyAutoMemoNo();
+  window._memoNoAuto = true;   // ให้เลขที่รันต่ออัตโนมัติ
+  applyAutoMemoNo();           // เติมเลขถัดไป เช่น CM2609004 และเช็กเลขซ้ำให้ด้วย
   document.getElementById('saveStatus').textContent = 'Copy มาเป็นรายการใหม่แล้ว — แก้แล้วกด "บันทึกลงระบบ" เพื่อสร้างเป็นรายการแยก';
   setTimeout(()=>{ document.getElementById('saveStatus').textContent=''; }, 4000);
   showTab('form');
@@ -1405,7 +1455,7 @@ function loadMemo(id){
   if (!data) return;
   window._currentId = data.id;
   window._currentSavedAt = data.savedAt;
-  window._memoNoAuto = false;
+  window._memoNoAuto = false; // กำลังแก้ไขเอกสารเดิม ไม่ต้องเติมเลขที่อัตโนมัติทับ
   setEditingBadge(data.memoNo);
   applyDataToForm(data);
 }
@@ -1600,6 +1650,13 @@ window.addEventListener('afterprint', ()=>{ document.getElementById('printSheet'
 function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function escapeAttr(s){ return escapeHtml(s); }
 
+// เรียกโหลดข้อมูลตอนเปิดหน้าเว็บครั้งแรก — ต้องอยู่ท้ายสุดของสคริปต์ หลังจากทุกฟังก์ชัน/ตัวแปร (let/const)
+// ถูกประกาศครบแล้วเท่านั้น ไม่งั้นจะชนกับกฎ Temporal Dead Zone ของ JavaScript (เรียกใช้ตัวแปร let/const
+// ก่อนถึงบรรทัดประกาศไม่ได้ จะเกิด "Cannot access ... before initialization" ทำให้สคริปต์พังทั้งไฟล์)
+//
+// หมายเหตุ: ต้องรอให้ DOM โหลดเสร็จก่อน (DOMContentLoaded) เพราะ initialLoad_() เรียก showPopup()
+// ซึ่งอ้างถึง #popupIcon ที่อยู่ท้ายไฟล์ ถ้าสคริปต์รันไปถึงบรรทัดนี้ก่อน browser พาร์ส div#popup
+// เสร็จ จะได้ null แล้ว error "Cannot set properties of null" ทันที
 if (SCRIPT_URL.indexOf('PASTE_YOUR') !== 0) {
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initialLoad_);

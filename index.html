@@ -1328,11 +1328,11 @@ function renderSummary(list){
   const names = Object.keys(groups);
   const summaries = names.map(name=>{
     const memos = groups[name].slice().sort((a,b)=> Number(b.savedAt) - Number(a.savedAt));
-    let subOutstanding = 0, subDue = 0;
-    memos.forEach(m=>{
-      subOutstanding += parseFloat(m.outstanding) || 0;
-      subDue += parseFloat(m.additionalDue) || 0;
-    });
+    // ยอดคงค้าง/ต้องชำระเพิ่ม เป็น "ยอดสะสม ณ เอกสารนั้น" ไม่ใช่ยอดต่อใบที่บวกกันได้
+    // จึงใช้ค่าจากเอกสารล่าสุดของลูกค้ารายนั้นเพียงใบเดียวเป็นยอดปัจจุบัน ไม่รวมยอดจากใบเก่าซ้ำ
+    const latestMemo = memos[0];
+    const subOutstanding = parseFloat(latestMemo.outstanding) || 0;
+    const subDue = parseFloat(latestMemo.additionalDue) || 0;
     return { name, memos, subOutstanding, subDue, weight: Math.abs(subOutstanding) + Math.abs(subDue) };
   });
 
@@ -1372,13 +1372,13 @@ function renderSummary(list){
         <table class="summary-company-table">
           <thead><tr><th>เลขที่เอกสาร</th><th>ยอดคงค้าง</th><th>ต้องชำระเพิ่ม</th></tr></thead>
           <tbody>${rows}</tbody>
-          <tfoot><tr><td>รวม</td><td class="num-cell">${fmt(s.subOutstanding)}</td><td class="num-cell">${fmt(s.subDue)}</td></tr></tfoot>
+          <tfoot><tr><td>ยอดปัจจุบัน (จากเอกสารล่าสุด)</td><td class="num-cell">${fmt(s.subOutstanding)}</td><td class="num-cell">${fmt(s.subDue)}</td></tr></tfoot>
         </table>
       </div>`;
     groupsEl.appendChild(card);
   });
 
-  totalsBar.innerHTML = `รวมทั้งหมดทุกบริษัท &nbsp;|&nbsp; ยอดคงค้าง: <b>${fmt(grandOutstanding)}</b> &nbsp;|&nbsp; ต้องชำระเพิ่ม: <b>${fmt(grandDue)}</b>`;
+  totalsBar.innerHTML = `ยอดปัจจุบันรวมทุกบริษัท (นับจากเอกสารล่าสุดของแต่ละราย) &nbsp;|&nbsp; ยอดคงค้าง: <b>${fmt(grandOutstanding)}</b> &nbsp;|&nbsp; ต้องชำระเพิ่ม: <b>${fmt(grandDue)}</b>`;
 }
 
 function toggleSummaryCard(bodyId){
